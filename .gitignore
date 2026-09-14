@@ -1,0 +1,22 @@
+# 数据（绝不入库）
+data/raw/
+data/processed/
+!data/mysql_init/
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# 日志与临时文件
+*.log
+06_ops/logs/
+*.tmp
+.DS_Store
+
+# 本地配置
+.env
+config.local.py
