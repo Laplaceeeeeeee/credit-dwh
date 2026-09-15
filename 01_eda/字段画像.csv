@@ -1,0 +1,138 @@
+﻿字段,dtype,缺失数,缺失率,唯一值数,样例值
+desc,string,199989,0.9999,11,"We knew that using our credit cards to finance an adoption would squeeze us, but then medical and other unexpected expen"
+dti_joint,float64,199491,0.9975,449,13.85 | 16.4 | 15.4 | 25.44 | 22.76
+verification_status_joint,string,199489,0.9974,1,Not Verified
+annual_inc_joint,float64,199489,0.9974,308,71000.0 | 100000.0 | 77000.0 | 113314.0 | 117000.0
+orig_projected_additional_accrued_interest,float64,198873,0.9944,1100,442.41 | 641.94 | 108.21 | 503.16 | 142.44
+payment_plan_start_date,string,198591,0.993,26,Oct-2017 | Sep-2017 | Aug-2017 | Sep-2018 | Dec-2017
+hardship_type,string,198591,0.993,1,INTEREST ONLY-3 MONTHS DEFERRAL
+hardship_reason,string,198591,0.993,9,NATURAL_DISASTER | DIVORCE | EXCESSIVE_OBLIGATIONS | DISABILITY | UNEMPLOYMENT
+hardship_status,string,198591,0.993,3,BROKEN | COMPLETED | ACTIVE
+deferral_term,float64,198591,0.993,1,3.0
+hardship_amount,float64,198591,0.993,1365,47.01 | 147.47 | 213.98 | 36.07 | 167.72
+hardship_start_date,string,198591,0.993,25,Sep-2017 | Jul-2017 | Sep-2018 | Dec-2017 | Aug-2017
+hardship_end_date,string,198591,0.993,27,Dec-2017 | Nov-2017 | Oct-2017 | Dec-2018 | Feb-2018
+hardship_length,float64,198591,0.993,1,3.0
+hardship_dpd,float64,198591,0.993,31,26.0 | 0.0 | 18.0 | 16.0 | 27.0
+hardship_loan_status,string,198591,0.993,4,Late (16-30 days) | Current | Late (31-120 days) | In Grace Period
+hardship_payoff_balance_amount,float64,198591,0.993,1409,3058.14 | 12014.81 | 18761.48 | 4801.21 | 18804.27
+hardship_last_payment_amount,float64,198591,0.993,1350,61.23 | 6.27 | 275.35 | 55.51 | 756.87
+debt_settlement_flag_date,string,194160,0.9708,36,Nov-2017 | May-2018 | Feb-2019 | Nov-2018 | Jul-2018
+settlement_status,string,194160,0.9708,3,COMPLETE | BROKEN | ACTIVE
+settlement_date,string,194160,0.9708,38,Sep-2017 | Nov-2017 | Jan-2018 | May-2018 | Jun-2018
+settlement_amount,float64,194160,0.9708,5174,9915.0 | 2761.0 | 4382.0 | 3513.0 | 13403.0
+settlement_percentage,float64,194160,0.9708,465,55.0 | 50.01 | 44.99 | 45.01 | 45.0
+settlement_term,float64,194160,0.9708,31,1.0 | 10.0 | 12.0 | 16.0 | 18.0
+il_util,float64,181383,0.9069,160,36.0 | 73.0 | 70.0 | 84.0 | 99.0
+mths_since_rcnt_il,float64,179190,0.896,201,21.0 | 19.0 | 23.0 | 14.0 | 338.0
+open_act_il,float64,178628,0.8931,35,2.0 | 1.0 | 3.0 | 5.0 | 7.0
+inq_fi,float64,178628,0.8931,18,3.0 | 0.0 | 2.0 | 1.0 | 5.0
+inq_last_12m,float64,178628,0.8931,28,4.0 | 6.0 | 1.0 | 0.0 | 3.0
+all_util,float64,178628,0.8931,139,34.0 | 29.0 | 65.0 | 45.0 | 78.0
+max_bal_bc,float64,178628,0.8931,10707,722.0 | 6472.0 | 2081.0 | 6987.0 | 9702.0
+total_bal_il,float64,178628,0.8931,17030,4981.0 | 18005.0 | 10827.0 | 12609.0 | 73839.0
+open_rv_24m,float64,178628,0.8931,28,3.0 | 2.0 | 1.0 | 7.0 | 0.0
+open_rv_12m,float64,178628,0.8931,18,3.0 | 2.0 | 0.0 | 1.0 | 4.0
+open_acc_6m,float64,178628,0.8931,13,2.0 | 1.0 | 0.0 | 3.0 | 6.0
+total_cu_tl,float64,178628,0.8931,33,1.0 | 0.0 | 5.0 | 2.0 | 3.0
+open_il_12m,float64,178628,0.8931,12,0.0 | 2.0 | 1.0 | 3.0 | 4.0
+open_il_24m,float64,178628,0.8931,17,1.0 | 4.0 | 3.0 | 0.0 | 2.0
+next_pymnt_d,string,176082,0.8804,5,Apr-2019 | Mar-2019 | Dec-2018 | Sep-2018 | May-2019
+mths_since_last_record,float64,164863,0.8243,121,106.0 | 75.0 | 30.0 | 2.0 | 66.0
+mths_since_recent_bc_dlq,float64,149198,0.746,137,69.0 | 12.0 | 48.0 | 30.0 | 76.0
+mths_since_last_major_derog,float64,141717,0.7086,142,30.0 | 3.0 | 75.0 | 54.0 | 33.0
+mths_since_recent_revol_delinq,float64,128419,0.6421,136,69.0 | 6.0 | 12.0 | 42.0 | 29.0
+mths_since_last_delinq,float64,97162,0.4858,130,30.0 | 6.0 | 12.0 | 49.0 | 3.0
+mths_since_recent_inq,float64,21750,0.1087,26,4.0 | 0.0 | 10.0 | 1.0 | 8.0
+emp_title,string,12130,0.0607,66136,leadman | Engineer | truck driver | Information Systems Officer | Contract Specialist
+emp_length,string,12103,0.0605,11,10+ years | 3 years | 4 years | 6 years | 1 year
+num_tl_120dpd_2m,float64,11193,0.056,3,0.0 | 1.0 | 2.0
+mo_sin_old_il_acct,float64,5741,0.0287,435,148.0 | 113.0 | 125.0 | 36.0 | 128.0
+percent_bc_gt_75,float64,2007,0.01,169,0.0 | 7.7 | 50.0 | 60.0 | 100.0
+bc_util,float64,1972,0.0099,1233,37.2 | 27.1 | 55.9 | 12.1 | 77.5
+bc_open_to_buy,float64,1844,0.0092,39431,1506.0 | 57830.0 | 2737.0 | 54962.0 | 4567.0
+mths_since_recent_bc,float64,1781,0.0089,385,4.0 | 2.0 | 101.0 | 36.0 | 12.0
+last_pymnt_d,string,148,0.0007,45,Jan-2019 | Jun-2016 | Jun-2017 | Feb-2019 | Jul-2016
+title,string,132,0.0007,14,Debt consolidation | Business | Major purchase | Credit card refinancing | Home improvement
+revol_util,float64,75,0.0004,1156,29.7 | 19.2 | 56.2 | 11.6 | 64.5
+num_tl_op_past_12m,float64,0,0.0,27,3.0 | 2.0 | 0.0 | 1.0 | 4.0
+num_tl_90g_dpd_24m,float64,0,0.0,18,0.0 | 1.0 | 2.0 | 4.0 | 12.0
+num_tl_30dpd,float64,0,0.0,5,0.0 | 1.0 | 2.0 | 4.0 | 3.0
+num_sats,float64,0,0.0,65,7.0 | 22.0 | 6.0 | 13.0 | 12.0
+num_rev_tl_bal_gt_0,float64,0,0.0,41,4.0 | 5.0 | 3.0 | 6.0 | 2.0
+pct_tl_nvr_dlq,float64,0,0.0,497,76.9 | 97.4 | 100.0 | 96.6 | 96.3
+num_rev_accts,float64,1,0.0,85,9.0 | 27.0 | 7.0 | 13.0 | 19.0
+num_op_rev_tl,float64,0,0.0,55,4.0 | 20.0 | 10.0 | 7.0 | 9.0
+num_il_tl,float64,0,0.0,93,3.0 | 6.0 | 2.0 | 10.0 | 7.0
+num_bc_tl,float64,0,0.0,53,5.0 | 17.0 | 4.0 | 10.0 | 9.0
+earliest_cr_line,string,0,0.0,645,Aug-2003 | Dec-1999 | Aug-2000 | Sep-2008 | Jun-1998
+tax_liens,float64,0,0.0,22,0.0 | 2.0 | 1.0 | 3.0 | 5.0
+pub_rec_bankruptcies,float64,0,0.0,10,0.0 | 1.0 | 2.0 | 3.0 | 8.0
+num_actv_rev_tl,float64,0,0.0,44,4.0 | 5.0 | 3.0 | 6.0 | 2.0
+funded_amnt,float64,0,0.0,1358,3600.0 | 24700.0 | 20000.0 | 35000.0 | 10400.0
+funded_amnt_inv,float64,0,0.0,1364,3600.0 | 24700.0 | 20000.0 | 35000.0 | 10400.0
+term,string,0,0.0,2, 36 months |  60 months
+int_rate,float64,0,0.0,81,13.99 | 11.99 | 10.78 | 14.85 | 22.45
+installment,float64,0,0.0,26194,123.03 | 820.28 | 432.66 | 829.9 | 289.91
+debt_settlement_flag,string,0,0.0,2,N | Y
+disbursement_method,string,0,0.0,1,Cash
+grade,string,0,0.0,7,C | B | F | A | E
+sub_grade,string,0,0.0,35,C4 | C1 | B4 | C5 | F1
+home_ownership,string,0,0.0,4,MORTGAGE | RENT | OWN | ANY
+annual_inc,float64,0,0.0,14189,55000.0 | 65000.0 | 63000.0 | 110000.0 | 104433.0
+verification_status,string,0,0.0,3,Not Verified | Source Verified | Verified
+issue_d,string,0,0.0,6,Dec-2015 | Nov-2015 | Oct-2015 | Sep-2015 | Aug-2015
+loan_status,string,0,0.0,7,Fully Paid | Current | Charged Off | In Grace Period | Late (31-120 days)
+pymnt_plan,string,0,0.0,2,n | y
+url,string,0,0.0,200000,https://lendingclub.com/browse/loanDetail.action?loan_id=68407277 | https://lendingclub.com/browse/loanDetail.action?loa
+purpose,string,0,0.0,13,debt_consolidation | small_business | home_improvement | major_purchase | credit_card
+zip_code,string,0,0.0,891,190xx | 577xx | 605xx | 076xx | 174xx
+hardship_flag,string,0,0.0,2,N | Y
+total_il_high_credit_limit,float64,0,0.0,84471,13734.0 | 24667.0 | 14877.0 | 18000.0 | 88097.0
+total_bc_limit,float64,0,0.0,3956,2400.0 | 79300.0 | 6200.0 | 62500.0 | 20300.0
+total_bal_ex_mort,float64,0,0.0,96239,7746.0 | 39475.0 | 18696.0 | 52226.0 | 95768.0
+tot_hi_cred_lim,float64,0,0.0,140639,178050.0 | 314017.0 | 218418.0 | 381215.0 | 439570.0
+num_bc_sats,float64,0,0.0,44,2.0 | 13.0 | 8.0 | 5.0 | 4.0
+chargeoff_within_12_mths,float64,0,0.0,9,0.0 | 1.0 | 2.0 | 3.0 | 6.0
+num_actv_bc_tl,float64,0,0.0,30,2.0 | 5.0 | 4.0 | 6.0 | 3.0
+total_pymnt,float64,0,0.0,183959,4421.723916800001 | 25679.66 | 22705.9242938784 | 31464.01 | 11740.5
+last_credit_pull_d,string,3,0.0,45,Mar-2019 | Mar-2018 | May-2017 | Nov-2018 | Sep-2018
+last_pymnt_amnt,float64,0,0.0,120590,122.67 | 926.35 | 15813.3 | 829.9 | 10128.96
+collection_recovery_fee,float64,0,0.0,22247,0.0 | 291.402 | 66.3066 | 1000.548 | 269.262
+recoveries,float64,0,0.0,21530,0.0 | 1618.9 | 368.37 | 5558.6 | 1495.9
+total_rec_late_fee,float64,0,0.0,3797,0.0 | 22.59 | 161.46 | 67.28 | 16.6
+total_rec_int,float64,0,0.0,153609,821.72 | 979.66 | 2705.92 | 12361.66 | 1340.5
+total_rec_prncp,float64,0,0.0,48384,3600.0 | 24700.0 | 20000.0 | 19102.35 | 10400.0
+total_pymnt_inv,float64,0,0.0,174931,4421.72 | 25679.66 | 22705.92 | 31464.01 | 11740.5
+out_prncp_inv,float64,0,0.0,16478,0.0 | 15897.65 | 9912.88 | 7080.7 | 9580.2
+num_accts_ever_120_pd,float64,0,0.0,31,2.0 | 0.0 | 1.0 | 4.0 | 12.0
+out_prncp,float64,0,0.0,15589,0.0 | 15897.65 | 9912.88 | 7080.7 | 9580.2
+initial_list_status,string,0,0.0,2,w | f
+total_acc,float64,0,0.0,115,13.0 | 38.0 | 18.0 | 17.0 | 35.0
+revol_bal,float64,0,0.0,49612,2765.0 | 21470.0 | 7869.0 | 7802.0 | 21929.0
+pub_rec,float64,0,0.0,26,0.0 | 1.0 | 2.0 | 3.0 | 5.0
+open_acc,float64,0,0.0,67,7.0 | 22.0 | 6.0 | 13.0 | 12.0
+inq_last_6mths,float64,0,0.0,6,1.0 | 4.0 | 0.0 | 3.0 | 2.0
+fico_range_high,float64,0,0.0,38,679.0 | 719.0 | 699.0 | 789.0 | 694.0
+last_fico_range_high,float64,0,0.0,72,564.0 | 699.0 | 704.0 | 679.0 | 759.0
+last_fico_range_low,float64,0,0.0,71,560.0 | 695.0 | 700.0 | 675.0 | 755.0
+collections_12_mths_ex_med,float64,0,0.0,7,0.0 | 1.0 | 2.0 | 3.0 | 4.0
+policy_code,float64,0,0.0,1,1.0
+mort_acc,float64,0,0.0,31,1.0 | 4.0 | 5.0 | 6.0 | 0.0
+mo_sin_rcnt_tl,float64,0,0.0,153,3.0 | 2.0 | 14.0 | 4.0 | 32.0
+mo_sin_rcnt_rev_tl_op,float64,0,0.0,224,3.0 | 2.0 | 14.0 | 4.0 | 32.0
+mo_sin_old_rev_tl_op,float64,0,0.0,678,128.0 | 192.0 | 184.0 | 87.0 | 210.0
+delinq_amnt,float64,0,0.0,555,0.0 | 687.0 | 40.0 | 36.0 | 6.0
+fico_range_low,float64,0,0.0,38,675.0 | 715.0 | 695.0 | 785.0 | 690.0
+avg_cur_bal,float64,0,0.0,44941,20701.0 | 9733.0 | 31617.0 | 23192.0 | 27644.0
+acc_open_past_24mths,float64,0,0.0,45,4.0 | 6.0 | 2.0 | 10.0 | 0.0
+total_rev_hi_lim,float64,0,0.0,7423,9300.0 | 111800.0 | 14000.0 | 67300.0 | 34000.0
+loan_amnt,float64,0,0.0,1358,3600.0 | 24700.0 | 20000.0 | 35000.0 | 10400.0
+tot_cur_bal,float64,0,0.0,142050,144904.0 | 204396.0 | 189699.0 | 301500.0 | 331730.0
+tot_coll_amt,float64,0,0.0,5739,722.0 | 0.0 | 8341.0 | 60.0 | 1830.0
+acc_now_delinq,float64,0,0.0,6,0.0 | 1.0 | 2.0 | 4.0 | 3.0
+addr_state,string,0,0.0,49,PA | SD | IL | NJ | GA
+dti,float64,2,0.0,4083,5.91 | 16.06 | 10.78 | 17.06 | 25.37
+delinq_2yrs,float64,0,0.0,20,0.0 | 1.0 | 2.0 | 3.0 | 4.0
+application_type,string,0,0.0,2,Individual | Joint App
+id,float64,0,0.0,200000,68407277.0 | 68355089.0 | 68341763.0 | 66310712.0 | 68476807.0
