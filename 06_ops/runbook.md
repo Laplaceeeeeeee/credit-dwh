@@ -62,3 +62,89 @@ MAX_ROWS = None      # 全量 2,260,668 行，出最终数字用
 | 终态不良率 | **19.9807%** |
 | 不良笔数 | 269,360 |
 | 终态笔数 | 1,348,099 |
+
+---
+
+## 6. ⚠️ 磁盘规划（重要，本项目踩过大坑）
+
+### 6.1 背景
+
+Windows 上的 Docker Desktop 把整个 Linux 环境装在**一个虚拟磁盘文件**里：
+
+```
+%LOCALAPPDATA%\Docker\wsl\disk\docker_data.vhdx
+```
+
+**这个文件只增不减。** 实测数据库真实数据只有 10.73 GB，
+但 vhdx 涨到了 **74 GB**（碎片 + 已删除块 + 临时文件）。
+一旦它把宿主盘撑满，**Docker daemon 会启动失败**，
+所有容器和数据都取不出来。
+
+### 6.2 各步磁盘开销（全量 226 万行，实测）
+
+| 项 | 占用 |
+|---|---|
+| 预处理 Parquet（在项目盘，不进 Docker） | 338 MB |
+| ODS + DWD + 维表 | 约 2.7 GB |
+| 快照表 MOB≤24（4471 万行） | 约 8 GB |
+| 快照表 MOB≤12（2521 万行） | 约 4.5 GB |
+| **索引重建 / 大表 JOIN 的临时空间** | **可能翻倍，最危险** |
+
+### 6.3 跑重任务前的三条检查
+
+```powershell
+# ① 看各盘剩余
+Get-PSDrive C,D,E,F | Select-Object Name, @{N='可用GB';E={[math]::Round($_.Free/1GB,1)}}
+
+# ② 看 Docker 虚拟盘大小与位置
+Get-Item "$env:LOCALAPPDATA\Docker\wsl\disk\docker_data.vhdx" |
+  Select-Object @{N='GB';E={[math]::Round($_.Length/1GB,2)}}, LastWriteTime
+
+# ③ 看数据库真实占用
+docker exec credit-dwh-mysql mysql -uroot -proot123456 -N -e @"
+SELECT ROUND(SUM(DATA_LENGTH+INDEX_LENGTH)/1024/1024/1024,2) AS GB
+FROM information_schema.TABLES WHERE TABLE_SCHEMA='credit_dwh';"
+```
+
+**规则**：任何盘剩余 **< 20 GB** 时，不要跑快照重建或大表 JOIN。
+
+### 6.4 爆盘后的恢复顺序
+
+```powershell
+# 1. 关闭 Docker Desktop（这一步常能还回几十 GB）
+& "C:\Program Files\Docker\Docker\DockerCli.exe" -Shutdown
+Start-Sleep 20
+
+# 2. 确认系统盘已回收到 ≥ 20 GB
+Get-PSDrive C | Select-Object @{N='可用GB';E={[math]::Round($_.Free/1GB,1)}}
+
+# 3. 启动 Docker Desktop
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+# 等 daemon 就绪（docker info 能返回版本号）
+
+# 4. 立刻验证数据完好
+docker start credit-dwh-mysql
+docker exec credit-dwh-mysql mysql -uroot -proot123456 -N -e @"
+USE credit_dwh;
+SELECT 'snapshot' t, COUNT(*) c FROM dws_loan_snapshot_m
+UNION ALL SELECT 'dwd', COUNT(*) FROM dwd_loan_fact;"
+
+# 5. 【关键】把大表规模降下来，避免再次爆盘
+#    改 src/dws_snapshot.py 的 MOB_MAX，然后重跑 src.dws_snapshot
+```
+
+### 6.5 根治：把 Docker 数据目录迁到空闲盘
+
+见 `docs/信贷数仓实施手册.md` §5.4 —— 两种做法（GUI 设置 / 目录联接）都有步骤。
+
+### 6.6 规模与磁盘的对照表（选规模时参考）
+
+| 规模 | 快照行数 | 数据库占用 | 建议磁盘余量 |
+|---|---|---|---|
+| 子集 20 万行，MOB≤24 | 480 万 | 约 1.2 GB | ≥ 10 GB |
+| **全量，MOB≤12** | **2521 万** | **约 4.5 GB** | **≥ 30 GB** |
+| 全量，MOB≤24 | 4471 万 | 约 8 GB | ≥ 40 GB |
+| 全量，MOB≤36 | 5916 万 | 约 11 GB | ≥ 50 GB |
+
+> 💡 **推荐**：全量 + `MOB_MAX = 12`。它覆盖首年表现窗口（年化不良率的关键），
+> 磁盘占用减半，Vintage 与迁徙率分析都够用。
