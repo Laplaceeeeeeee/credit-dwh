@@ -11,8 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import pymysql
 from sqlalchemy import text
 
+from src import config
 from src.utils import get_engine, get_logger, read_sql
 
 log = get_logger("ads_metrics")
@@ -112,26 +114,82 @@ FROM (
 GROUP BY issue_month, mob;
 """
 
+# ⚠️ 迁徙率的计算代价（实测踩过）：
+#    全量快照 4471 万行、141 个观测月。若对所有相邻月份对做自关联，
+#    相当于对 4471 万行做 140 次双向扫描 —— 单机 MySQL 无法完成，作业会被拖死。
+#
+#    因此**只算最近 ROLL_RATE_MONTHS 个观测月**。
+#    这不是偷懒：迁徙率矩阵的用途就是看"最近一期"的状态流转，
+#    分析报告也只展示最近一个月。算全部历史没有业务意义，却有巨大的性能代价。
+#
+#    若确实需要更长历史，把 ROLL_RATE_MONTHS 调大（耗时近似线性增长）。
+#
+# ⚠️ 坑 2（排序规则，第二次踩）：
+#    最初用 CREATE TEMPORARY TABLE 存"最近的月份"，结果临时表跟随**库默认排序规则**
+#    utf8mb4_unicode_ci，而快照表是 utf8mb4_0900_ai_ci，JOIN 时报：
+#        ERROR 1267 Illegal mix of collations
+#    这正是排错手册 C-15 记过的坑 —— 加一张表就多一次踩坑机会。
+#
+#    教训：**能不加表就不加表**。改用子查询直接算出起始月份，纯范围过滤 + 自关联。
+#
+# ⚠️ 坑 3（日期函数对 CHAR 失效）：
+#    snapshot_month 是 CHAR(7)（如 '2019-03'），DATE_SUB 直接作用于它**返回 NULL**，
+#    于是过滤条件 `>= NULL` 恒为假，查询 0.1 秒返回 0 行（静默失败，不报错）。
+#    这类"不报错但结果为空"的 bug 最危险，必须靠**验证行数**发现。
+#
+#    最终改用**字符串比较**：'YYYY-MM' 是定长格式，字典序恰好等于时间序，
+#    所以 `snapshot_month >= DATE_FORMAT(DATE_SUB(..., INTERVAL n MONTH), '%Y-%m')`
+#    可以简化为对 12 个月前的月份字符串做比较。既避开类型转换，又简单可靠。
+ROLL_RATE_MONTHS = 12
+
 SQL_ROLL_RATE = """
 TRUNCATE TABLE ads_roll_rate;
+
+-- 只取最近 {n} 个月的相邻月份对做自关联。
+-- 起点 = 最大月份往前推 n 个月；用 CONCAT 把 CHAR(7) 补成 DATE 再运算，
+-- 避免 DATE_SUB 直接作用于 CHAR 返回 NULL。
 INSERT INTO ads_roll_rate (from_month, from_bucket, to_bucket, cnt, rate)
-SELECT a.snapshot_month, a.dpd_bucket, b.dpd_bucket, COUNT(*),
+SELECT a.snapshot_month,
+       a.dpd_bucket,
+       b.dpd_bucket,
+       COUNT(*) AS cnt,
        ROUND(COUNT(*) / SUM(COUNT(*)) OVER (
-         PARTITION BY a.snapshot_month, a.dpd_bucket), 6)
+              PARTITION BY a.snapshot_month, a.dpd_bucket), 6) AS rate
 FROM dws_loan_snapshot_m a
 JOIN dws_loan_snapshot_m b
-  ON a.loan_id = b.loan_id AND b.mob = a.mob + 1
+  ON  b.loan_id = a.loan_id
+  AND b.snapshot_month = DATE_FORMAT(
+        DATE_ADD(STR_TO_DATE(CONCAT(a.snapshot_month, '-01'), '%Y-%m-%d'),
+                 INTERVAL 1 MONTH), '%Y-%m')
+WHERE a.snapshot_month >= DATE_FORMAT(
+        DATE_SUB(STR_TO_DATE(CONCAT(
+          (SELECT MAX(snapshot_month) FROM dws_loan_snapshot_m), '-01'), '%Y-%m-%d'),
+          INTERVAL {n} MONTH), '%Y-%m')
 GROUP BY a.snapshot_month, a.dpd_bucket, b.dpd_bucket;
-"""
+""".format(n=ROLL_RATE_MONTHS)
 
 
 def run_block(name: str, sql: str) -> int:
-    eng = get_engine()
+    """执行一段 SQL（可含多条语句）。
+
+    ⚠️ 必须**共用同一个连接**：本次新增了 CREATE TEMPORARY TABLE，
+       而临时表只在创建它的会话里可见。若每条语句各开一个连接，
+       后续 INSERT 会找不到临时表。
+       同时临时表在会话结束时会自动消失，所以不要用连接池的自动归还逻辑。
+    """
     t0 = time.time()
     stmts = [s.strip() for s in sql.split(";") if s.strip()]
-    with eng.begin() as conn:
-        for s in stmts:
-            conn.execute(text(s))
+    cfg = config.DB
+    conn = pymysql.connect(host=cfg["host"], port=cfg["port"], user=cfg["user"],
+                           password=cfg["password"], database=cfg["database"],
+                           charset="utf8mb4", autocommit=True)
+    try:
+        with conn.cursor() as cur:
+            for s in stmts:
+                log.info(f"    · {s.splitlines()[0][:70]}")
+                cur.execute(s)
+    finally:
+        conn.close()
     log.info(f"  ✅ {name} 完成（{time.time() - t0:.1f}s，{len(stmts)} 条语句）")
     return len(stmts)
 
