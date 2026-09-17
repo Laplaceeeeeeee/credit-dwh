@@ -93,11 +93,38 @@ def load_ods(full_reload: bool = True) -> int:
             f"请重跑 python -m src.prepare_raw"
         )
 
-    with eng.begin() as conn:
-        if full_reload:
-            log.info("full_reload=True -> TRUNCATE ods_loan_raw")
-            conn.execute(text("TRUNCATE TABLE ods_loan_raw"))
+    # ---------- 清空 + 校验（防御点 1）----------
+    if full_reload:
+        for attempt in (1, 2):
+            with eng.begin() as conn:
+                log.info(f"TRUNCATE ods_loan_raw（第 {attempt} 次）")
+                conn.execute(text("TRUNCATE TABLE ods_loan_raw"))
+            with eng.connect() as conn:
+                left = conn.execute(text("SELECT COUNT(*) FROM ods_loan_raw")).scalar()
+            if left == 0:
+                log.info("  ✅ 已清空（行数=0）")
+                break
+            log.warning(f"  ⚠️ TRUNCATE 后仍有 {left:,} 行，重试")
+        else:
+            raise RuntimeError(
+                f"TRUNCATE 两次后 ods_loan_raw 仍有数据，请手工清理后再跑："
+                f"docker exec credit-dwh-mysql mysql -uroot -proot123456 "
+                f"-e \"USE credit_dwh; TRUNCATE TABLE ods_loan_raw;\""
+            )
 
+    # ---------- 插入前查重（防御点 2）----------
+    # 若源数据本身有重复主键，提前报出明确错误，而不是等 MySQL 抛 1062
+    ids = df["id"].astype(str)
+    dup_mask = ids.duplicated(keep=False)
+    if dup_mask.any():
+        sample = ids[dup_mask].unique()[:10].tolist()
+        raise ValueError(
+            f"源数据存在 {int(dup_mask.sum()):,} 行重复主键，样例 {sample}。"
+            f"请先修 prepare_raw 或确认是否应保留最后一条。"
+        )
+    log.info(f"  ✅ 主键查重通过（{len(ids):,} 行均唯一）")
+
+    # ---------- 分批写入 ----------
     n = 0
     for i in range(0, len(df), BATCH):
         part = df.iloc[i:i + BATCH]
