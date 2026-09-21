@@ -1,0 +1,16 @@
+﻿table,column,max_diff,over_tol,tol,quantized_mismatch,non_tie_mismatch,passed
+风险分层,loan_cnt,0.0,0,0.0,,,True
+风险分层,total_amnt,0.0,0,0.01,,,True
+风险分层,bad_cnt,0.0,0,0.0,,,True
+风险分层,bad_rate,4.799999999999249e-05,0,5.0001000000000005e-05,0.0,0.0,True
+风险分层,avg_int_rate,0.0,0,0.0001,,,True
+Vintage,bad_rate,5.000000000002225e-05,0,5.0001000000000005e-05,84.0,0.0,True
+Vintage,exposure_cnt,0.0,0,0.0,,,True
+迁徙率,cnt,0.0,0,0.0,,,True
+迁徙率,rate,4.8000000000048004e-05,0,5.0001000000000005e-05,0.0,0.0,True
+逾期月报,loan_cnt,0.0,0,0.0,,,True
+逾期月报,bad_cnt,0.0,0,0.0,,,True
+逾期月报,delinq_cnt,0.0,0,0.0,,,True
+逾期月报,delinq_rate,5.000000000002225e-05,0,5.0001000000000005e-05,15.0,0.0,True
+逾期月报,bad_rate,5.000000000000837e-05,0,5.0001000000000005e-05,12.0,0.0,True
+逾期月报,outstanding_amt,0.0,0,0.01,,,True
