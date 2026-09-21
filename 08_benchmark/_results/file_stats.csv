@@ -1,0 +1,6 @@
+table,files,total_mb,avg_kb,min_kb,max_kb
+dwd_loan_fact_lc,139,48.54,357.6,3.0,1339.6
+dwd_loan_perf_fact_lc,2,43.46,22249.8,21737.7,22762.0
+dws_loan_snapshot_lc,141,560.31,4069.2,1.7,13946.0
+dim_applicant_lc,2,31.51,16132.4,15655.1,16609.7
+dwd_loan_fact_lc/2007-06,1,0.00,3.0,3.0,3.0
