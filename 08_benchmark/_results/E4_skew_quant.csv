@@ -1,0 +1,4 @@
+case,reps,times_s,median_s,output_rows,ok
+quant_key_distribution_各key占比与倾斜比,1,4.17,4.17,9,True
+quant_hash_partition_distribution_哈希分区分布,1,0.48,0.48,8,True
+quant_granularity_comparison_键粒度对照,1,5.07,5.07,3,True

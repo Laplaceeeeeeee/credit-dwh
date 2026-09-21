@@ -1,0 +1,5 @@
+case,reps,times_s,median_s,output_rows,ok
+aqe_on_groupby_聚合倾斜·AQE_开（skewJoin_管不了聚合）,1,7.31,7.31,9,True
+rebalance_hint_聚合倾斜·REBALANCE_提示（引擎原生"自动加盐"）,1,1.75,1.75,9,True
+join_skew_aqe_on_default_强制_shuffle_join·AQE_默认阈值,1,1.33,1.33,7,True
+join_skew_aqe_on_low_threshold_调低阈值让它真的触发,1,0.98,0.98,7,True

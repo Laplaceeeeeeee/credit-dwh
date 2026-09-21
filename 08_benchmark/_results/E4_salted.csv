@@ -1,0 +1,7 @@
+case,reps,times_s,median_s,output_rows,ok
+salted_5_加盐·5桶（单一键）,1,7.58,7.58,9,True
+salted_10_加盐·10桶,1,2.39,2.39,9,True
+salted_20_加盐·20桶,1,2.00,2.0,9,True
+verify_materialize_base_落表·基线（复合键）,1,2.88,2.88,0,True
+verify_materialize_salted10_落表·加盐10桶（同分组键）,1,2.40,2.4,0,True
+verify_row_match_⭐逐行比对（期望：全部_mismatch_=_0_且_total_rows_>_0）,1,0.40,0.4,1,True

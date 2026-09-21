@@ -1,0 +1,3 @@
+case,reps,times_s,median_s,output_rows,ok
+baseline_A_by_status_按状态分组（单一键·严重倾斜）,1,7.25,7.25,9,True
+baseline_B_composite_复合键分组（对照组·倾斜被摊薄）,1,2.49,2.49,699,True
