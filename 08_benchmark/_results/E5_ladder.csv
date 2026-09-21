@@ -1,0 +1,3 @@
+case,reps,times_s,median_s,output_rows,ok
+spark_25pct_25%_样本,3,4.22;0.79;0.60,0.79,7,True
+spark_10pct_10%_样本,3,0.38;0.35;0.35,0.35,7,True

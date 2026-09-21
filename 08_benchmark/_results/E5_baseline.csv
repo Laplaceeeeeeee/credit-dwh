@@ -1,0 +1,6 @@
+case,reps,times_s,median_s,output_rows,ok
+spark_unoptimized_未优化（AQE_关）,3,7.23;1.52;1.30,1.52,7,True
+spark_optimized_优化后（AQE_开）,3,1.34;1.13;1.03,1.13,7,True
+spark_optimized_rebalance_优化后_+_REBALANCE_提示（E4_实测最快的聚合方案）,3,1.07;1.11;1.08,1.08,7,True
+ladder_build_25pct_建样本_25%,3,2.78;1.34;1.21,1.34,0,True
+ladder_rows_25pct_样本行数（要与_MySQL_侧相等）,3,0.12;0.08;0.08,0.08,1,True
