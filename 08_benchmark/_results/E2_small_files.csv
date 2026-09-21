@@ -1,0 +1,7 @@
+case,reps,times_s,median_s,output_rows,ok
+build_many_files_分区表·200并行,1,33.05,33.05,0,True
+build_maxrecords_20000_每2万行一个文件,1,1.05,1.05,0,True
+build_one_file_per_partition_分区表·COALESCE(1),1,1.99,1.99,0,True
+query_many_files_查询·小文件表,1,2.22,2.22,7,True
+query_one_file_per_partition_查询·合并表,1,0.28,0.28,7,True
+query_maxrecords_查询·maxRecordsPerFile_表,1,0.33,0.33,7,True

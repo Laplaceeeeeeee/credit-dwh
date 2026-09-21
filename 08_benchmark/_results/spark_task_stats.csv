@@ -1,0 +1,15 @@
+﻿stage_id,stage_name,num_tasks,min_ms,median_ms,max_ms,max_over_median,sum_ms
+1,sql at NativeMethodAccessorImpl.java:0,5,198,2247,3597,1.6,10706
+2,sql at NativeMethodAccessorImpl.java:0,5,136,1301,2128,1.64,6532
+35,collect at /workspace/08_benchmark/run_experiment.,8,36,778.0,1470,1.89,6515
+3,sql at NativeMethodAccessorImpl.java:0,5,122,1211,2330,1.92,6240
+38,collect at /workspace/08_benchmark/run_experiment.,4,225,559.0,821,1.47,2164
+11,collect at /workspace/08_benchmark/run_experiment.,8,9,233.5,464,1.99,1919
+41,collect at /workspace/08_benchmark/run_experiment.,4,98,480.0,768,1.6,1826
+4,collect at /workspace/08_benchmark/run_experiment.,8,6,232.0,274,1.18,1635
+0,sql at NativeMethodAccessorImpl.java:0,139,0,1,70,70.0,672
+27,collect at /workspace/08_benchmark/run_experiment.,4,76,136.0,153,1.12,501
+19,collect at /workspace/08_benchmark/run_experiment.,4,94,123.0,138,1.12,478
+10,collect at /workspace/08_benchmark/run_experiment.,3,69,69,69,1.0,207
+6,collect at /workspace/08_benchmark/run_experiment.,4,25,39.0,66,1.69,169
+5,collect at /workspace/08_benchmark/run_experiment.,4,6,24.0,95,3.96,149

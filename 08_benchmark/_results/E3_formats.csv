@@ -1,0 +1,11 @@
+case,reps,times_s,median_s,output_rows,ok
+build_text_TextFile,1,5.91,5.91,0,True
+build_parquet_Parquet,1,2.35,2.35,0,True
+build_orc_ORC,1,2.50,2.5,0,True
+sanity_rowcounts_三表行数必须一致,1,1.10,1.1,3,True
+narrow_text_少列·TextFile,1,0.95,0.95,7,True
+narrow_parquet_少列·Parquet,1,0.33,0.33,7,True
+narrow_orc_少列·ORC,1,0.32,0.32,7,True
+wide_text_全列·TextFile,1,2.06,2.06,1,True
+wide_parquet_全列·Parquet,1,0.94,0.94,1,True
+wide_orc_全列·ORC,1,0.87,0.87,1,True

@@ -1,0 +1,1 @@
+﻿            +- FileScan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc[issue_month#23] Batched: true, DataFilters: [], Format: ORC, Location: InMemoryFileIndex(1 paths)[file:/opt/spark/warehouse/credit_dwh_lc.db/dwd_loan_fact_lc/issue_mont..., PartitionFilters: [isnotnull(issue_month#23), (issue_month#23 = 2018-06)], PushedFilters: [], ReadSchema: struct<>

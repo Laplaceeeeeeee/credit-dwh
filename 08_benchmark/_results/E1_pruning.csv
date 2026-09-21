@@ -1,0 +1,7 @@
+case,reps,times_s,median_s,output_rows,ok
+prep_nopart_建非分区对照表,3,6.91;3.17;3.15,3.17,0,True
+baseline_full_scan_分区表·全表,3,0.66;0.32;0.30,0.32,1,True
+treatment_one_partition_分区表·单分区,3,0.19;0.13;0.14,0.14,1,True
+control_nopart_same_predicate_非分区表·同谓词,3,0.22;0.13;0.11,0.13,1,True
+explain_partition_pruning_查看下推,3,0.08;0.07;0.06,0.07,1,True
+explain_cost_estimate_估算扫描量,3,0.06;0.06;0.06,0.06,1,True

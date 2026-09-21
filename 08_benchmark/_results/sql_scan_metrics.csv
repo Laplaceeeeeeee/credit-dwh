@@ -1,0 +1,91 @@
+﻿execution_id,node,metric,value,description
+1,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+3,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+4,Execute InsertIntoHiveTable,number of output rows,2260668,sql at NativeMethodAccessorImpl.java:0
+4,ColumnarToRow,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of files read,139,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,scan time,None,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,metadata time,1258,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,size of files read,50897150,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+4,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of partitions read,139,sql at NativeMethodAccessorImpl.java:0
+5,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:146
+7,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+9,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+10,Execute InsertIntoHadoopFsRelationCommand,number of output rows,2260668,sql at NativeMethodAccessorImpl.java:0
+10,ColumnarToRow,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of files read,139,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,scan time,None,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,metadata time,53,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,size of files read,50897150,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+10,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of partitions read,139,sql at NativeMethodAccessorImpl.java:0
+11,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:146
+13,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+15,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:152
+16,Execute InsertIntoHadoopFsRelationCommand,number of output rows,2260668,sql at NativeMethodAccessorImpl.java:0
+16,ColumnarToRow,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of files read,139,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,scan time,None,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,metadata time,42,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,size of files read,50897150,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of output rows,None,sql at NativeMethodAccessorImpl.java:0
+16,Scan orc spark_catalog.credit_dwh_lc.dwd_loan_fact_lc,number of partitions read,139,sql at NativeMethodAccessorImpl.java:0
+17,CommandResult,number of output rows,0,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan hive spark_catalog.credit_dwh_lc.fmt_text,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,size of files read,30247144,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,size of files read,36039035,collect at /workspace/08_benchmark/run_experiment.py:146
+18,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+19,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+19,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+19,Scan hive spark_catalog.credit_dwh_lc.fmt_text,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+20,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+20,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+20,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+20,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+20,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+20,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+20,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,size of files read,30247144,collect at /workspace/08_benchmark/run_experiment.py:146
+20,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+21,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+21,HashAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+21,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+21,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+21,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+21,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+21,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,size of files read,36039035,collect at /workspace/08_benchmark/run_experiment.py:146
+21,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+22,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+22,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+22,Scan hive spark_catalog.credit_dwh_lc.fmt_text,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+23,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+23,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+23,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+23,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+23,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+23,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+23,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,size of files read,30247144,collect at /workspace/08_benchmark/run_experiment.py:146
+23,Scan parquet spark_catalog.credit_dwh_lc.fmt_parquet,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+24,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+24,SortAggregate,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+24,ColumnarToRow,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146
+24,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of files read,5,collect at /workspace/08_benchmark/run_experiment.py:146
+24,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,scan time,None,collect at /workspace/08_benchmark/run_experiment.py:146
+24,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,metadata time,0,collect at /workspace/08_benchmark/run_experiment.py:146
+24,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,size of files read,36039035,collect at /workspace/08_benchmark/run_experiment.py:146
+24,Scan orc spark_catalog.credit_dwh_lc.fmt_orc,number of output rows,None,collect at /workspace/08_benchmark/run_experiment.py:146

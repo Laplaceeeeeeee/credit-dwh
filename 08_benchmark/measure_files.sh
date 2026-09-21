@@ -26,8 +26,13 @@ measure() {
     return 1
   fi
 
-  # ⭐ 直接数文件系统：与 Spark 版本无关，数出来的就是引擎要读的文件
-  row=$(find "$dir" -name '*.orc' -printf '%s\n' 2>/dev/null | awk '
+  # ⭐ 直接数文件系统：与 Spark 版本无关，数出来的就是引擎要读的文件。
+  # ⚠️⚠️ 不能用 `-name '*.orc'` 统计！实测两种写路径的文件命名不同：
+  #    · 数据源写路径（非分区 CTAS / INSERT 到转换表）→ `part-xxx.c000.snappy.orc`
+  #    · Hive serde 写路径（分区表 CTAS）      → `part-xxx.c000`（**没有扩展名**）
+  #    只按 *.orc 统计会把分区表数成 0 个文件（本机实测踩到）。
+  #    另外每个数据文件旁边还有一个隐藏的 `.<name>.crc` 校验文件，必须排除。
+  row=$(find "$dir" -type f -name 'part-*' ! -name '*.crc' -printf '%s\n' 2>/dev/null | awk '
     {n++; s+=$1; if (n==1 || $1<mn) mn=$1; if ($1>mx) mx=$1}
     END {printf "%d,%.2f,%.1f,%.1f,%.1f", n, s/1048576,
          (n?s/n/1024:0), (n?mn/1024:0), (n?mx/1024:0)}')
