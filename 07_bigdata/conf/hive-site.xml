@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!--
+  Metastore 侧配置。
+  ⚠️ 这个文件只给 Hive Metastore 用（通过 HIVE_CUSTOM_CONF_DIR 注入），
+     不是给 Spark 用的 —— Spark 的参数在 spark-defaults.conf。
+
+  ⭐ 关键点：hive.metastore.warehouse.dir 必须是**两个容器都能看到的同一个路径**。
+     元数据里存的是**绝对路径字符串**，而真正写文件的是 Spark。
+     所以 bd-metastore 与 bd-spark 要挂同一个卷、用同一个路径
+     （本项目：卷 spark_warehouse → 两边都是 /opt/spark/warehouse）。
+-->
+<configuration>
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/opt/spark/warehouse</value>
+  </property>
+
+  <!-- 单机学习环境：不做用户/角色鉴权（生产上当然不能这么干） -->
+  <property>
+    <name>hive.metastore.execute.setugi</name>
+    <value>true</value>
+  </property>
+
+  <!-- 连接元数据库所需的 JDBC 驱动类（驱动 jar 由 compose 挂载进 /opt/hive/lib） -->
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>com.mysql.cj.jdbc.Driver</value>
+  </property>
+</configuration>

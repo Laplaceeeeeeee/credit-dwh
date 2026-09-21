@@ -63,3 +63,13 @@ config.local.py
 .idea/
 .vscode/
 *.swp
+
+# ===== 阶段三：大数据层体积型产物（绝不入库）=====
+07_bigdata/exchange/
+07_bigdata/warehouse/
+07_bigdata/derby/
+07_bigdata/jars/
+08_benchmark/_exp/
+08_benchmark/_spark_events/
+09_realtime/*.csv
+*.tsv

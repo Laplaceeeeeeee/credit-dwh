@@ -1,0 +1,124 @@
+# ============================================================
+# 阶段三大数据层（方案 A）
+#   元数据库(MySQL) + Hive Metastore + Spark Master + Spark Worker
+#
+# ⚠️ 资源已按本机适配（Docker Desktop VM 内存上限约 7.6 GB）：
+#      与指导书默认值的差异见各服务注释；跑重任务前建议先停掉阶段二的
+#      credit-dwh-mysql（docker stop credit-dwh-mysql）腾出内存。
+#
+# ⚠️ 用法：本文件在 07_bigdata/ 下，因此挂载项目根要用 ../ （上一级）
+#      —— 容器内才会是 /workspace/07_bigdata/... 与 /workspace/08_benchmark/...
+# ============================================================
+services:
+  # ---------- ① Hive Metastore 的元数据库 ----------
+  metastore-db:
+    image: ${METASTORE_DB_IMAGE:-mysql:8.4}
+    container_name: bd-metastore-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: metastore
+      TZ: Asia/Shanghai
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - metastore_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 1g
+
+  # ---------- ② Hive Metastore（只做元数据，不做计算）----------
+  metastore:
+    image: ${HIVE_IMAGE:-apache/hive:3.1.3}
+    container_name: bd-metastore
+    restart: unless-stopped
+    # ⭐ 必须以 root 运行：镜像默认是 uid=1000(hive)，而命名卷的目录属主是 root，
+    #    hive 用户无法在 /opt/spark/warehouse 下建库目录，会报：
+    #      MetaException(message:Unable to create database path
+    #                    file:/opt/spark/warehouse/credit_dwh_lc.db ...)
+    user: root
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: mysql
+      HIVE_CUSTOM_CONF_DIR: /hive_custom_conf
+      # 光设 DB_DRIVER 不够：JDO 四件套必须通过 SERVICE_OPTS 传进去
+      SERVICE_OPTS: >-
+        -Djavax.jdo.option.ConnectionDriverName=com.mysql.cj.jdbc.Driver
+        -Djavax.jdo.option.ConnectionURL=jdbc:mysql://metastore-db:3306/metastore?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+        -Djavax.jdo.option.ConnectionUserName=root
+        -Djavax.jdo.option.ConnectionPassword=root123456
+      # schema 已于 2026-09-21 首次启动时初始化完成（metastore 库 74 张表）。
+      # ⚠️ IS_RESUME 语义：只要它的值不是字符串 "false"，镜像就跳过 schema 初始化。
+      #    首次全新安装时应设为 "false"；之后重建容器要设 "true"，
+      #    否则 schematool 会对已存在的 schema 再 initSchema 而报错。
+      #    （SKIP_SCHEMA_INIT 是镜像内部变量，由 IS_RESUME 覆盖，设了没用）
+      IS_RESUME: "true"
+      TZ: Asia/Shanghai
+    ports:
+      - "9083:9083"
+    depends_on:
+      metastore-db:
+        condition: service_healthy
+    volumes:
+      # ⭐⭐ 与 spark 挂同一个卷、同一个路径：元数据里存的是绝对路径
+      - spark_warehouse:/opt/spark/warehouse
+      - ./conf/hive-site.xml:/hive_custom_conf/hive-site.xml:ro
+      # Hive 镜像不自带 MySQL JDBC 驱动，必须自己挂
+      - ./jars/mysql-connector-j-8.0.33.jar:/opt/hive/lib/mysql-connector-j-8.0.33.jar:ro
+    mem_limit: 1500m
+
+  # ---------- ③ Spark Master ----------
+  spark:
+    image: ${SPARK_IMAGE:-apache/spark:3.5.9-scala2.12-java11-python3-ubuntu}
+    container_name: bd-spark
+    restart: unless-stopped
+    user: root
+    command: >
+      bash -c "/opt/spark/sbin/start-master.sh"
+    environment:
+      SPARK_NO_DAEMONIZE: "true"    # 关键：让 master 留在前台，容器才不会立刻退出
+      SPARK_MASTER_HOST: spark      # 让 worker 用服务名找回 master
+      SPARK_MASTER_PORT: "7077"
+      SPARK_MASTER_WEBUI_PORT: "8080"
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+      - "4040:4040"
+    volumes:
+      - ../:/workspace
+      - spark_warehouse:/opt/spark/warehouse
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+      - ./conf/hive-site.xml:/opt/spark/conf/hive-site.xml:ro
+    cpus: "2"
+    mem_limit: 1500m
+
+  # ---------- ④ Spark Worker ----------
+  spark-worker:
+    image: ${SPARK_IMAGE:-apache/spark:3.5.9-scala2.12-java11-python3-ubuntu}
+    container_name: bd-spark-worker
+    restart: unless-stopped
+    user: root
+    command: >
+      bash -c "/opt/spark/sbin/start-worker.sh spark://spark:7077"
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_CORES: "4"
+      SPARK_WORKER_MEMORY: "2g"
+      SPARK_WORKER_WEBUI_PORT: "8081"
+      TZ: Asia/Shanghai
+    depends_on:
+      - spark
+    volumes:
+      - ../:/workspace
+      - spark_warehouse:/opt/spark/warehouse
+      - ./conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+      - ./conf/hive-site.xml:/opt/spark/conf/hive-site.xml:ro
+    cpus: "4"
+    mem_limit: 2800m
+
+volumes:
+  metastore_db:
+  spark_warehouse:
