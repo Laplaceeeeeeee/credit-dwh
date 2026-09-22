@@ -1,0 +1,95 @@
+# ============================================================
+# 阶段三交付物清单（一行一个路径；# 开头为注释）
+#
+# ⚠️ 为什么清单单独放一个 UTF-8 文本文件，而不是写进 .ps1：
+#    BOM-less 的 .ps1 在 Windows PowerShell 5.1 下会被按 GBK 读取，
+#    中文路径会把字符串引号截断，报 ParserError（阶段二踩过）。
+#    所以 .ps1 保持 **纯 ASCII**，中文路径全部放这里，用 -Encoding UTF8 读。
+#
+# ⚠️ 本清单**按仓库实际文件名逐条核对过**，不是照抄指导书示例：
+#    指导书里写的 `08_benchmark/E5_三引擎基准.md`、`exp/E4_verify.sql` 在仓库里
+#    并不存在（实际是 `引擎选型结论.md`，E4 也没有 verify.sql）。
+# ============================================================
+
+# ---- 阶段三：大数据层（07_bigdata）----
+07_bigdata/docker-compose-bigdata.yml
+07_bigdata/.env.example
+07_bigdata/conf/spark-defaults.conf
+07_bigdata/conf/hive-site.xml
+07_bigdata/export_mysql_tsv.py
+07_bigdata/export_ads_csv.py
+07_bigdata/check_consistency.py
+07_bigdata/compare_ads.py
+07_bigdata/hive/00_smoke.sql
+07_bigdata/hive/01_ddl.sql
+07_bigdata/hive/02_load.sql
+07_bigdata/hive/02b_load_snapshot_dim.sql
+07_bigdata/hive/03_verify_load.sql
+07_bigdata/hive/04_ads_risk_segment.sql
+07_bigdata/hive/05_ads_vintage.sql
+07_bigdata/hive/06_ads_roll_rate.sql
+07_bigdata/hive/07_ads_delinq_monthly.sql
+07_bigdata/hive/08_ads_selfcheck.sql
+07_bigdata/spark/smoke_test.py
+07_bigdata/spark/vintage_job.py
+07_bigdata/环境验收记录.md
+07_bigdata/第13步-迁移验收记录.md
+07_bigdata/阶段三进度与收尾.md
+
+# ---- 阶段三：测量框架与实验（08_benchmark）----
+08_benchmark/run_experiment.py
+08_benchmark/parse_spark_log.py
+08_benchmark/measure_files.sh
+08_benchmark/bench_mysql.py
+08_benchmark/exp/E1_pruning.sql
+08_benchmark/exp/E2_small_files.sql
+08_benchmark/exp/E3_formats.sql
+08_benchmark/exp/E4_skew_quant.sql
+08_benchmark/exp/E4_baseline.sql
+08_benchmark/exp/E4_salted.sql
+08_benchmark/exp/E4_aqe.sql
+08_benchmark/exp/E5_baseline.sql
+08_benchmark/exp/E5_ladder.sql
+08_benchmark/_baseline/mysql_baseline.json
+08_benchmark/_results/E1_pruning.csv
+08_benchmark/_results/E2_small_files.csv
+08_benchmark/_results/E3_formats.csv
+08_benchmark/_results/E4_aqe.csv
+08_benchmark/_results/E4_baseline.csv
+08_benchmark/_results/E4_salted.csv
+08_benchmark/_results/E4_skew_quant.csv
+08_benchmark/_results/E5_baseline.csv
+08_benchmark/_results/E5_ladder.csv
+08_benchmark/_results/file_stats.csv
+08_benchmark/_results/spark_task_stats.csv
+08_benchmark/_results/sql_scan_metrics.csv
+08_benchmark/consistency_result.csv
+08_benchmark/ads_row_diff.csv
+08_benchmark/E1_explain_partition_filters.txt
+08_benchmark/E1_分区裁剪.md
+08_benchmark/E2_小文件合并.md
+08_benchmark/E3_列存格式对比.md
+08_benchmark/E4_数据倾斜报告.md
+08_benchmark/引擎选型结论.md
+08_benchmark/双引擎口径差异.md
+08_benchmark/实验记录模板.md
+
+# ---- 工程化（第 18 步）----
+src/metrics.py
+tests/test_metric_definitions.py
+pytest.ini
+ruff.toml
+requirements-dev.txt
+.github/workflows/ci.yml
+docs/lineage.yaml
+docs/gen_lineage.py
+docs/数据血缘.md
+docs/SLA与监控.md
+docs/第18步-工程化收口验收记录.md
+
+# ---- 面试资产与收尾（第 20 步）----
+README.md
+JianLi.md
+06_ops/shell/verify_stage3.ps1
+06_ops/verify_stage3_forbidden.txt
+docs/第20步-面试资产验收记录.md
