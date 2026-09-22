@@ -16,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd
 from sqlalchemy import text
 
-from src import config
 from src.utils import clean_source_name, get_engine, get_logger, read_clean
 
 log = get_logger("ods_load")
@@ -107,9 +106,9 @@ def load_ods(full_reload: bool = True) -> int:
             log.warning(f"  ⚠️ TRUNCATE 后仍有 {left:,} 行，重试")
         else:
             raise RuntimeError(
-                f"TRUNCATE 两次后 ods_loan_raw 仍有数据，请手工清理后再跑："
-                f"docker exec credit-dwh-mysql mysql -uroot -proot123456 "
-                f"-e \"USE credit_dwh; TRUNCATE TABLE ods_loan_raw;\""
+                "TRUNCATE 两次后 ods_loan_raw 仍有数据，请手工清理后再跑："
+                "docker exec credit-dwh-mysql mysql -uroot -proot123456 "
+                "-e \"USE credit_dwh; TRUNCATE TABLE ods_loan_raw;\""
             )
 
     # ---------- 插入前查重（防御点 2）----------

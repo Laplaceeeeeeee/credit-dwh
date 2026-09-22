@@ -10,11 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from src import config
 from src.utils import clean_source_name, get_engine, get_logger, read_clean
 
 log = get_logger("dwd_clean")

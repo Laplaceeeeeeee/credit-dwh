@@ -12,10 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pymysql
-from sqlalchemy import text
 
 from src import config
-from src.utils import get_engine, get_logger, read_sql
+from src.utils import get_logger, read_sql
 
 log = get_logger("ads_metrics")
 

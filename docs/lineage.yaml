@@ -1,0 +1,167 @@
+# ============================================================
+# 数据血缘元数据 —— 血缘的**单一事实来源**
+#
+# 用法：
+#   python docs/gen_lineage.py           # 生成 docs/数据血缘.md
+#   python docs/gen_lineage.py --check   # 只做一致性校验（CI 里跑这个）
+#
+# 边方向一律 upstream -> downstream。
+# 引用外部系统时用 `<kind>:<name>` 形式（file:/kafka:/report:/export:/calendar:），
+# 这些节点不要求在本文件里定义；**其余引用必须是本文件里已定义的表**，
+# 否则 `--check` 会失败 —— 这样血缘图不会和代码悄悄脱节。
+#
+# ⚠️ 本文件是对 v3 指导书 18.4 节 yaml 模板的**实测修订**，两处与代码不符已改正：
+#   1. `dim_applicant / dim_product / dws_loan_snapshot_m` 等表**不是**从
+#      `dwd_loan_fact` 读出来的。`src/dim_build.py` 与 `src/dws_snapshot.py`
+#      都直接 `read_clean()` 读同一份干净 Parquet（见 src/utils.py）。
+#      MySQL 层是"同一份干净数据的多个扇出"，不是逐层串接 —— 如实登记。
+#   2. 同理 `ods_loan_raw` 与 `dwd_loan_fact` 是**兄弟关系**而非父子：
+#      `src/ods_load.py` 与 `src/dwd_clean.py` 各自读干净 Parquet。
+#      ODS 表在本项目里的定位是"留证 / 回滚点"，不是 DWD 的输入。
+# ============================================================
+version: 1
+
+# ---------- 阶段二：MySQL 四层数仓（库 credit_dwh）----------
+tables:
+
+  ods_loan_raw:
+    layer: ODS
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: [dq_check_result]
+    note: "由 src/ods_load.py 从干净 Parquet 装载；与 DWD 同源扇出，是留证/回滚点"
+    sla: "T+1 07:30"
+
+  dwd_loan_fact:
+    layer: DWD
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: [ads_risk_segment, dq_check_result, dwd_loan_fact_lc]
+    note: "申请时点事实表（32 个申请字段 + 派生列），不含任何表现期字段（Q8 校验）"
+    sla: "T+1 08:00"
+
+  dwd_loan_perf_fact:
+    layer: DWD
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: [ads_risk_segment, dq_check_result, dwd_loan_perf_fact_lc]
+    note: "表现期事实表，is_bad / is_terminal 在此固化"
+    sla: "T+1 08:00"
+
+  dim_applicant:
+    layer: DIM
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: [ads_risk_segment, dq_check_result, dim_applicant_lc]
+    note: "loan_id 唯一；income_band / fico_band 分档在此生成"
+
+  dim_product:
+    layer: DIM
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: []
+    note: "product_code = 期限_评级；已建但未进 ADS 汇总（诚实空白）"
+
+  dim_date:
+    layer: DIM
+    upstream: ["calendar:2008-01-01..2019-12-31"]
+    downstream: []
+    note: "⚠️ 仅覆盖 2008-01 起，覆盖不到最早 6 个月 603 笔贷款（阶段三不依赖）"
+
+  dws_loan_snapshot_m:
+    layer: DWS
+    upstream: ["file:data/clean/loans_full.parquet"]
+    downstream: [ads_vintage, ads_roll_rate, ads_delinq_monthly, dws_loan_snapshot_lc]
+    note: "放款月 × 观测月的月末快照长表，mob <= 24"
+    sla: "T+1 09:00"
+
+  ads_risk_segment:
+    layer: ADS
+    upstream: [dwd_loan_fact, dwd_loan_perf_fact, dim_applicant]
+    downstream: [dq_check_result, "report:分层风险画像"]
+    note: "18 行（dim_type ∈ grade/purpose/state/home_ownership × ALL）"
+
+  ads_vintage:
+    layer: ADS
+    upstream: [dws_loan_snapshot_m]
+    downstream: ["report:Vintage 曲线"]
+    note: "24,768 行"
+
+  ads_roll_rate:
+    layer: ADS
+    upstream: [dws_loan_snapshot_m]
+    downstream: ["report:月度迁徙率"]
+    note: "108 行；口径归一自检见 07_bigdata/hive/08_ads_selfcheck.sql"
+
+  ads_delinq_monthly:
+    layer: ADS
+    upstream: [dws_loan_snapshot_m]
+    downstream: ["report:逾期月报"]
+    note: "3,105 行"
+
+  etl_watermark:
+    layer: OPS
+    upstream: []
+    downstream: []
+    note: "增量幂等水位表（阶段二），阶段三全量链未使用"
+
+  dq_check_result:
+    layer: OPS
+    upstream: [ods_loan_raw, dwd_loan_fact, dwd_loan_perf_fact,
+               dim_applicant, ads_risk_segment]
+    downstream: []
+    note: "8 条规则 11 项校验结果落库（src/dq_check.py）"
+
+  # ---------- 阶段三：Hive/Spark 层（库 credit_dwh_lc）----------
+  dwd_loan_fact_lc:
+    layer: "DWD(Hive, ORC, 分区 issue_month ×139)"
+    upstream: [dwd_loan_fact, "export:07_bigdata/export_mysql_tsv.py"]
+    downstream: [ads_risk_segment_lc, e5_ladder]
+    note: "装载走 stg_loan_fact(临时表) → REPARTITION(20, issue_month)，141 分区各 1 文件"
+
+  dwd_loan_perf_fact_lc:
+    layer: "DWD(Hive, ORC)"
+    upstream: [dwd_loan_perf_fact, "export:07_bigdata/export_mysql_tsv.py"]
+    downstream: [ads_risk_segment_lc]
+    note: "非分区表"
+
+  dws_loan_snapshot_lc:
+    layer: "DWS(Hive, ORC, 分区 snapshot_month)"
+    upstream: [dws_loan_snapshot_m, "export:07_bigdata/export_mysql_tsv.py"]
+    downstream: [ads_vintage_lc, ads_roll_rate_lc, ads_delinq_monthly_lc]
+
+  dim_applicant_lc:
+    layer: "DIM(Hive, ORC)"
+    upstream: [dim_applicant, "export:07_bigdata/export_mysql_tsv.py"]
+    downstream: [ads_risk_segment_lc]
+
+  ads_risk_segment_lc:
+    layer: "ADS(Hive, ORC)"
+    upstream: [dwd_loan_fact_lc, dwd_loan_perf_fact_lc, dim_applicant_lc]
+    downstream: ["verify:07_bigdata/compare_ads.py"]
+    note: "18 行，与 MySQL 侧逐行一致"
+
+  ads_vintage_lc:
+    layer: "ADS(Hive, ORC)"
+    upstream: [dws_loan_snapshot_lc]
+    downstream: ["verify:07_bigdata/compare_ads.py"]
+
+  ads_roll_rate_lc:
+    layer: "ADS(Hive, ORC)"
+    upstream: [dws_loan_snapshot_lc]
+    downstream: ["verify:07_bigdata/compare_ads.py"]
+
+  ads_delinq_monthly_lc:
+    layer: "ADS(Hive, ORC)"
+    upstream: [dws_loan_snapshot_lc]
+    downstream: ["verify:07_bigdata/compare_ads.py"]
+
+  # 实验临时表：由 08_benchmark/run_experiment.py 按 08_benchmark/exp/*.sql 建
+  e5_ladder:
+    layer: "EXP(Hive, 临时表)"
+    upstream: [dwd_loan_fact_lc, "exp:08_benchmark/E5_ladder.sql"]
+    downstream: ["result:08_benchmark/_results/E5_ladder.csv"]
+    note: "E5 数据量阶梯（10%/25%/100%），loan_id % N = 0 两引擎同谓词"
+
+  # ---------- 阶段三：实时链路（第 19 步，**尚未实现**）----------
+  ads_loan_daily_realtime:
+    layer: "ADS(Realtime)"
+    status: planned
+    upstream: ["kafka:loan_issue_events"]
+    downstream: ["reconcile:batch_stream"]
+    note: "⚠️ 第 19 步未开工：本表**不存在**，登记在此是为了标出批流对账的接入点"

@@ -1,0 +1,43 @@
+name: CI
+
+# ⭐ 本步的核心：把"口径"变成断言，让任何改动都被自动拦住。
+#    CI 里**不连数据库、不连 Spark** —— 所以口径必须抽成纯函数。
+#    这也是 `src/metrics.py` 存在的意义（阶段二就抽出来了，本步补上断言）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'          # 与本地 venv（3.11.8）一致
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 静态检查（ruff）
+        # ⚠️ 指导书 18.3 的模板里还写了 `09_realtime/`，但第 19 步尚未开工、
+        #    目录不存在 —— ruff 对不存在的路径会直接报错退出，照抄会让 CI 变红。
+        #    第 19 步落地后把 `09_realtime/` 加回这一行即可。
+        run: ruff check src/ tests/ 07_bigdata/ 08_benchmark/ docs/gen_lineage.py
+
+      - name: 指标单测（不依赖数据库）
+        run: pytest tests/ -v -m "not integration"
+
+      - name: 数据血缘一致性校验
+        # 校验 lineage.yaml 没有悬空引用、up/downstream 双向一致（防止图写完就烂）
+        run: python docs/gen_lineage.py --check

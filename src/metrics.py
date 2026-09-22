@@ -48,3 +48,20 @@ def weighted_avg_rate(pairs) -> float | None:
     if not total:
         return None
     return sum(a * r for a, r in valid) / total
+
+
+def skew_ratio_of(share: float, n_keys: int) -> float:
+    """倾斜比 = 该 key 占比 ÷ 平均占比 = share × n_keys。
+
+    ⭐ 为什么要把它抽成函数并单测：
+       这个公式在数据倾斜分析里极其常用，而它有一个非常隐蔽的写错方式 ——
+       在按 key 分组的查询里写 `COUNT(DISTINCT key)` 来自算"平均占比"。
+       那个表达式**恒等于 1**，于是算出来的"倾斜比"就等于占比本身
+       （47.63% → 0.4763），你会得出"这里没有倾斜"的错误结论。
+       写成纯函数 + 单测，就很难再错第二次。
+
+    例：9 个 key、某 key 占 47.63% → 0.4763 × 9 ≈ 4.29（严重倾斜）
+    """
+    if share is None or not n_keys:
+        return 0.0
+    return share * n_keys
