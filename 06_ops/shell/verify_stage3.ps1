@@ -43,17 +43,23 @@ $RUFF = Join-Path $ROOT '.venv\Scripts\ruff.exe'
 $script:pass = 0
 $script:fail = 0
 
-function Check([string]$name, [scriptblock]$block) {
+# NOTE: the parameters are named $title / $body on purpose. PowerShell script
+#       blocks invoked with & are DYNAMICALLY scoped: a variable inside the
+#       block resolves to the *invoking function's* parameter if the names
+#       collide. Naming a parameter $name silently shadowed the caller's
+#       container-name loop variable, so docker inspect received the check
+#       label instead of a container name. Keep these names unique.
+function Check([string]$title, [scriptblock]$body) {
     try {
-        if (& $block) {
-            Write-Host ("[ OK ] " + $name) -ForegroundColor Green
+        if (& $body) {
+            Write-Host ("[ OK ] " + $title) -ForegroundColor Green
             $script:pass++
         } else {
-            Write-Host ("[FAIL] " + $name) -ForegroundColor Red
+            Write-Host ("[FAIL] " + $title) -ForegroundColor Red
             $script:fail++
         }
     } catch {
-        Write-Host ("[FAIL] " + $name + "  -> " + $_.Exception.Message) -ForegroundColor Red
+        Write-Host ("[FAIL] " + $title + "  -> " + $_.Exception.Message) -ForegroundColor Red
         $script:fail++
     }
 }
@@ -221,10 +227,9 @@ if ($Full) {
         $LASTEXITCODE -eq 0
     }
 
-    foreach ($c in @("credit-dwh-mysql", "bd-metastore", "bd-spark")) {
-        $name = $c
-        Check ("container running: " + $name) {
-            ((docker inspect -f '{{.State.Running}}' $name) -eq "true")
+    foreach ($cname in @("credit-dwh-mysql", "bd-metastore", "bd-spark")) {
+        Check ("container running: " + $cname) {
+            ((docker inspect -f '{{.State.Running}}' $cname) -eq "true")
         }
     }
 
