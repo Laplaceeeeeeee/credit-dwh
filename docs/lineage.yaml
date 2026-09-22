@@ -74,7 +74,7 @@ tables:
     layer: ADS
     upstream: [dwd_loan_fact, dwd_loan_perf_fact, dim_applicant]
     downstream: [dq_check_result, "report:分层风险画像"]
-    note: "18 行（dim_type ∈ grade/purpose/state/home_ownership × ALL）"
+    note: "18 行 / 3 个 dim_type（grade / income_band / fico_band），均只算终态"
 
   ads_vintage:
     layer: ADS
