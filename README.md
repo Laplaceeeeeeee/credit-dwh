@@ -1,9 +1,11 @@
 # credit-dwh —— 金融信贷离线数仓
 
+[![CI](https://github.com/Laplaceeeeeeee/credit-dwh/actions/workflows/ci.yml/badge.svg)](https://github.com/Laplaceeeeeeee/credit-dwh/actions/workflows/ci.yml)
+
 > **项目定位**：金融/信贷离线数仓，作为**研究生实习简历**的项目经历
 > **投递方向**：银行/券商 数据开发（数仓方向）
-> **当前进度**：阶段二 ✅ 已完成 · 阶段三 **7/9 步**（第 12–18 步：环境/迁移/五实验/工程化；
-> 第 19 步实时链路是**可砍项、未做**）
+> **当前进度**：阶段二 ✅ 已完成 · 阶段三 **8/9 步**（第 12–18、20 步全部完成；
+> 第 19 步实时链路是**可砍项、未做**）· CI ✅ **passing**
 > **最后更新**：2026-09-22
 
 ---
@@ -133,7 +135,9 @@ data/clean/loans_full.parquet (338MB, 2,260,668 行 × 137 列)
   其中 3 条是把踩过的坑固化的**回归防线**（`Current` 不进不良率分母、倾斜比公式的
   恒等式错写法、行数守恒应为 **0** 而非历史误判的 32）。
 - **CI**：`.github/workflows/ci.yml` 三步 —— ruff 静态检查 → 指标单测 → 血缘一致性校验，
-  **全程不连数据库**（这正是把口径抽成纯函数的意义）。
+  **全程不连数据库**（这正是把口径抽成纯函数的意义）。**已跑绿**：
+  [Actions run `35698960325`](https://github.com/Laplaceeeeeeee/credit-dwh/actions/runs/35698960325)，
+  首页 badge 显示 `passing`。
 - **数据血缘**：`docs/lineage.yaml` → `docs/gen_lineage.py` → `docs/数据血缘.md`
   （23 个节点、Mermaid）；CI 跑 `--check` 卡住"悬空引用 / 单向边"。
 - **四类 SLA**：新鲜度 / 数据量波动 / 指标越界 / ⭐ **跨链路对账**（双引擎 + 批流），见 `docs/SLA与监控.md`。
