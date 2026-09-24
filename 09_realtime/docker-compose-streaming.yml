@@ -188,3 +188,39 @@ services:
     depends_on:
       jobmanager:
         condition: service_started
+
+  # ============================================================
+  # M4 · 第二个查询引擎：Spark 直读 Flink 正在流写的同一张 Paimon 表
+  #
+  # 为什么用它来证明"湖仓"：
+  #   · **两个引擎读同一份存储** —— 不需要"把数据从 A 导到 B"，
+  #     这正是湖仓相对"数仓 + 数据湖两套"的核心卖点；
+  #   · **读算分离** —— Flink 持续流写，Spark 同时批读，互不阻塞；
+  #   · **快照隔离 / 时间旅行** —— 读者看到的是一个一致的快照，
+  #     而且可以按 snapshot id 回读历史版本。
+  #
+  # 用 profile 隔离：默认 `up -d` **不会**拉起它（省内存）；
+  # 只在做湖仓查询验证时按需启动：
+  #   docker compose -f docker-compose-streaming.yml --profile query up -d spark-query
+  #
+  # ⚠️ warehouse 以 **只读** 挂载：Spark 是读者，不该写湖。
+  #    这也顺带避免了"两个引擎竞争写同一张表"这种危险配置。
+  # ============================================================
+  spark-query:
+    image: ${SPARK_IMAGE}
+    container_name: rt-spark-query
+    hostname: spark-query
+    profiles: ["query"]
+    # 常驻待命，便于反复 docker exec 做查询（Spark 启动一次约 10-20 秒）
+    command: ["sleep", "infinity"]
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+    volumes:
+      # Paimon 的 Spark 连接器：注意制品名带 _2.12（Spark 3.5 是 Scala 2.12）；
+      # 不带后缀的 paimon-spark-3.5 是 Scala 2.13 线，只到 1.3.2，不能用。
+      - ./jars/paimon-spark-3.5_2.12-1.4.2.jar:/opt/paimon/paimon-spark-3.5_2.12-1.4.2.jar:ro
+      - ./sql:/sql:ro
+      - paimon-warehouse:/warehouse:ro
+    networks:
+      - credit-dwh-net
+    restart: "no"

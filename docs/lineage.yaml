@@ -164,7 +164,7 @@ tables:
   rt_loan_fact_latest:
     layer: "RT(Paimon 主键表)"
     upstream: ["kafka:credit_dwd_loan_fact"]
-    downstream: []
+    downstream: ["query:spark-query"]
     note: "变更日志（debezium-json）镜像最新状态；额外带 sink_ts 用于端到端延迟测量（实测 ≈310 ms）"
 
   rt_loan_change_1min:
@@ -176,8 +176,8 @@ tables:
   rt_loan_month_agg:
     layer: "RT(Paimon 指标表)"
     upstream: ["kafka:credit_dwd_loan_fact"]
-    downstream: ["verify:09_realtime/check_batch_stream.py"]
-    note: "⭐ 按放款月维护的 upsert 聚合，是批流对账的实时侧。与 dwd_loan_fact 逐月对账：139 个月、笔数差 0、金额差 0.00（判定规则见 docs/SLA与监控.md §5.3）"
+    downstream: ["verify:09_realtime/check_batch_stream.py", "query:spark-query"]
+    note: "⭐ 按放款月维护的 upsert 聚合，是批流对账的实时侧。与 dwd_loan_fact 逐月对账：139 个月、笔数差 0、金额差 0.00（判定规则见 docs/SLA与监控.md §5.3）；另由 Spark 只读直读（M4）"
 
   # 注：原 `ads_loan_daily_realtime`（status: planned）已移除 ——
   #     实时链路已实现，但**不是日粒度指标表**：本数据集的 issue_date 一律为「当月 1 日」，
