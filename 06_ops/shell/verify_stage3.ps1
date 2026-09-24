@@ -5,12 +5,14 @@
     Quick mode (default) - no Docker, no Spark, no heavy SQL:
         * deliverable inventory (from a UTF-8 side-car list file)
         * no unfilled "__" placeholder left in report tables
+        * this script itself contains no non-ASCII byte (B-52, self-enforcing)
         * pytest: metric unit tests all green
         * ruff: static check clean
         * lineage: docs/gen_lineage.py --check passes
         * E1-E5 result files exist and look sane
         * dual-engine / row-diff result files all matched
-        * resume material (README.md / JianLi.md) sanity
+        * README.md carries the stage-3 measured numbers
+        * docs_claims_guard.txt: no stale stage-3 claim left in README.md
     -Full mode adds the parts that need a running environment:
         * docker containers up (mysql / metastore / spark)
         * the real Spark dual-engine consistency run exits 0
@@ -39,6 +41,10 @@ Set-Location $ROOT
 
 $PY = Join-Path $ROOT '.venv\Scripts\python.exe'
 $RUFF = Join-Path $ROOT '.venv\Scripts\ruff.exe'
+# Absolute path to this script, captured at TOP-LEVEL scope on purpose: automatic
+# variables such as $PSCommandPath resolve to the *caller's* scope inside the
+# script blocks passed to Check (dynamic scoping - see the note on Check below).
+$SELF = (Resolve-Path $MyInvocation.MyCommand.Path).Path
 
 $script:pass = 0
 $script:fail = 0
@@ -93,6 +99,16 @@ if (Test-Path (Get-RepoFile $listFile)) {
 
 Check "virtualenv python exists (.venv/Scripts/python.exe)" { Test-Path $PY }
 
+Check "this script is pure ASCII (PS 5.1 / GBK lesson, appendix B-52)" {
+    # Windows PowerShell 5.1 reads a BOM-less .ps1 as ANSI/GBK, so a single Chinese
+    # comment can truncate a string terminator and kill the whole run. Chinese paths
+    # and assertions belong in the UTF-8 side-car files instead.
+    # This check exists because the rule was already documented and then still got
+    # broken by 12 non-ASCII bytes in a comment - so the rule is now machine-enforced.
+    $raw = [System.IO.File]::ReadAllBytes($SELF)
+    @($raw | Where-Object { $_ -gt 127 }).Count -eq 0
+}
+
 # --------------------------------------------------- no unfilled blanks left
 # NOTE: only *table rows* are checked. Prose may legitimately quote a bare
 #       placeholder while explaining a documentation bug (one of the E-reports
@@ -100,11 +116,15 @@ Check "virtualenv python exists (.venv/Scripts/python.exe)" { Test-Path $PY }
 Check "no unfilled placeholders in report tables" {
     $targets = @()
     $targets += @(Get-ChildItem (Get-RepoFile "08_benchmark") -Filter *.md -File)
-    foreach ($n in @("README.md", "JianLi.md")) {
+    # NOTE: only repo-tracked material is scanned here. The resume write-up and the
+    #       stage-3 learning handbooks live OUTSIDE the repo on purpose (see the
+    #       "private material" section of .gitignore), so they must not be required.
+    foreach ($n in @("README.md")) {
         $p = Get-RepoFile $n
         if (Test-Path $p) { $targets += (Get-Item $p) }
     }
-    if ($targets.Count -lt 9) { return $false }   # guard: did we actually scan anything?
+    # guard against a hollow scan: 08_benchmark holds 7 reports, + README = 8
+    if ($targets.Count -lt 8) { return $false }
     $bad = @()
     foreach ($t in $targets) {
         $bad += @(Select-String -Path $t.FullName -Pattern '`__`|\| __ \|' -ErrorAction SilentlyContinue |
@@ -188,21 +208,22 @@ Check "README.md documents the stage-3 layer" {
     ($txt -match 'Hive') -and ($txt -match 'Spark') -and ($txt -match 'E5')
 }
 
-Check "JianLi.md carries stage-3 measured numbers" {
-    $p = Get-RepoFile "JianLi.md"
+Check "README.md carries the stage-3 measured numbers" {
+    # Anchors: E4 skew share 47.63%, E5 MySQL end-to-end 3.94 s, tolerance 5e-5.
+    $p = Get-RepoFile "README.md"
     if (-not (Test-Path $p)) { return $false }
     $txt = Get-Content $p -Raw -Encoding UTF8
     ($txt -match '47\.63') -and ($txt -match '3\.94') -and ($txt -match '5e-5')
 }
 
-Check "JianLi.md / README.md free of stale stage-3 claims" {
-    # The forbidden Chinese phrases live in a UTF-8 side-car file (see header).
-    $fp = Get-RepoFile "06_ops/verify_stage3_forbidden.txt"
-    if (-not (Test-Path $fp)) { return $false }
-    $patterns = Read-Utf8Lines "06_ops/verify_stage3_forbidden.txt"
+Check "README.md free of stale stage-3 claims" {
+    # The stale Chinese phrases live in a UTF-8 side-car file (see header).
+    $guard = "06_ops/docs_claims_guard.txt"
+    if (-not (Test-Path (Get-RepoFile $guard))) { return $false }
+    $patterns = Read-Utf8Lines $guard
     if ($patterns.Count -eq 0) { return $false }
     $hits = @()
-    foreach ($rel in @("JianLi.md", "README.md")) {
+    foreach ($rel in @("README.md")) {
         $p = Get-RepoFile $rel
         if (-not (Test-Path $p)) { continue }
         $lines = @(Get-Content $p -Encoding UTF8)
