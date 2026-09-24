@@ -74,6 +74,14 @@ config.local.py
 09_realtime/*.csv
 *.tsv
 
+# ===== 阶段四：实时链路体积型产物（绝不入库）=====
+# 连接器与 Paimon jar（约 74 MB）由 09_realtime/技术决策.md 记录的 URL 重新下载，
+# 仓库只保存"生成方式"（URL + 校验和），不保存 jar 本体。
+09_realtime/jars/
+09_realtime/warehouse/
+09_realtime/kafka-data/
+09_realtime/checkpoints/
+
 # ============================================================
 # 私有材料（2026-09-24 仓库卫生）
 # ------------------------------------------------------------
