@@ -1,0 +1,164 @@
+# ============================================================
+# 阶段四 · 实时链路（M1：CDC -> Kafka -> Flink -> Paimon）
+#
+# 设计要点（理由见 09_realtime/技术决策.md）：
+#   1) Flink 1.20.5 线 —— Docker Hub 上 Flink 已到 2.3.0，但 Paimon
+#      只发布到 paimon-flink-2.2，照抄"最新 tag"必然撞墙。
+#   2) 四个 jar 逐个挂进 /opt/flink/lib（**不能整目录挂载**，
+#      那会覆盖镜像自带的 Flink 依赖）。
+#      · paimon-flink-1.20        流式湖仓的表格式实现（主键表 + 流读）
+#      · flink-sql-connector-mysql-cdc  CDC 源（shaded，含 Debezium）
+#      · flink-sql-connector-kafka      Kafka 源/汇
+#      · mysql-connector-j-8.0.33  ⚠️ CDC 的 shaded jar **不含 JDBC 驱动**
+#        （许可原因），必须另行提供。本项目复用阶段三 07_bigdata/jars/
+#        里的同一个 jar —— 实测含 com/mysql/cj/jdbc/Driver.class。
+#   3) 星火网络 external：阶段二 MySQL 已在 credit-dwh-net 里，
+#      实时栈必须加入同一网络才能按容器名连到 CDC 源。
+#   4) 内存：JM 1024m + TM 2048m + Kafka ≈ 1g + MySQL ≈ 400m
+#      ≈ 4.5 GB / Docker VM 7.64 GB。**因此跑实时链路时
+#      Hive/Spark 四容器必须先停**（与阶段三"跑 Spark 前停 MySQL"
+#      的方向相反：CDC 需要 MySQL 活着）。
+# ============================================================
+
+name: credit-dwh-streaming
+
+networks:
+  credit-dwh-net:
+    external: true
+
+volumes:
+  # 命名卷：见 x-flink-common 里的说明（Windows bind mount 会让 Hadoop mkdir 失败）
+  paimon-warehouse:
+  flink-checkpoints:
+
+x-flink-common: &flink-common
+  image: ${FLINK_IMAGE}
+  volumes:
+    - ./jars/paimon-flink-1.20-1.4.2.jar:/opt/flink/lib/paimon-flink-1.20-1.4.2.jar:ro
+    # ⚠️ Paimon 的 Flink 连接器即使只走本地文件系统，也依赖 Hadoop 的
+    #    org.apache.hadoop.conf.Configuration —— 不加这个 jar，
+    #    `CREATE CATALOG paimon` 直接报 ClassNotFoundException。
+    #    用 Paimon 官方出的 shaded 包（与 Paimon 同版本），
+    #    而不是 Flink 那个停在 Hadoop 2.8.3 的 flink-shaded-hadoop-2-uber。
+    - ./jars/paimon-hadoop-uber-1.4.2.jar:/opt/flink/lib/paimon-hadoop-uber-1.4.2.jar:ro
+    - ./jars/flink-sql-connector-mysql-cdc-3.6.0-1.20.jar:/opt/flink/lib/flink-sql-connector-mysql-cdc-3.6.0-1.20.jar:ro
+    - ./jars/flink-sql-connector-kafka-3.4.0-1.20.jar:/opt/flink/lib/flink-sql-connector-kafka-3.4.0-1.20.jar:ro
+    - ./jars/mysql-connector-j-8.0.33.jar:/opt/flink/lib/mysql-connector-j-8.0.33.jar:ro
+    - ./sql:/sql:ro
+    # ⚠️ warehouse 与 checkpoints 用**命名卷**，不用 Windows bind mount。
+    #    实测教训：绑到宿主目录时，Paimon 的写入会稳定失败于
+    #      java.io.IOException: Mkdirs failed to create
+    #      file:/warehouse/rt.db/<表>/bucket-0
+    #    （Hadoop 的 LocalFileSystem 在 Docker Desktop 的文件共享语义下
+    #      mkdir 失败；而在容器里手工 mkdir 同一路径却成功，
+    #      说明问题出在 Java/Hadoop 与宿主文件系统共享的交互上）。
+    #    命名卷落在 Docker VM 的 Linux 文件系统里，POSIX 语义正常。
+    #    代价：宿主不能直接浏览 warehouse，验证统一走 SQL（99_verify.sql）。
+    - paimon-warehouse:/warehouse
+    - flink-checkpoints:/opt/flink/checkpoints
+  networks:
+    - credit-dwh-net
+  restart: unless-stopped
+
+services:
+  kafka:
+    image: ${KAFKA_IMAGE}
+    container_name: rt-kafka
+    hostname: kafka
+    ports:
+      - "9094:9094"          # 宿主机侧用（容器内用 kafka:9092）
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - ./kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 20s
+    networks:
+      - credit-dwh-net
+    restart: unless-stopped
+
+  jobmanager:
+    <<: *flink-common
+    container_name: rt-jobmanager
+    hostname: jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 1024m
+        rest.address: 0.0.0.0
+        rest.bind-address: 0.0.0.0
+        # ⚠️ 必须有界！Flink 默认的重启策略是"无限次重试"，于是：
+        #    · 一个写错的作业会永远 RESTARTING；
+        #    · 它会**一直占着 slot 不放**，把整个集群饿死，
+        #      表现为后续作业报 NoResourceAvailableException ——
+        #      真正的错因（第一个作业）反而被埋掉了。
+        #    这是实测踩到的坑：排查时花了很久才发现"是前面那个坏作业占着资源"。
+        #    限 3 次既能暴露持续失败，也足够 M2 做 kill-and-recover 演练。
+        restart-strategy.type: fixed-delay
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 5s
+        # ⚠️ Paimon 必需：往 Paimon 写 upsert 变更时，Flink 默认会插一个
+        #    "sink materializer"（为不支持更新的 sink 做去重），
+        #    而 Paimon sink 原生支持 upsert —— 不关掉会直接报
+        #      "Sink materializer must not be used with Paimon sink".
+        table.exec.sink.upsert-materialize: NONE
+        execution.checkpointing.interval: 10s
+        execution.checkpointing.mode: EXACTLY_ONCE
+        execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+        state.backend.type: hashmap
+        # checkpoints 目录已恢复：之前的 mkdir 失败**不是**文件系统问题，
+        # 而是权限主体不一致 —— 见 09_realtime/init/02_prepare_volumes.ps1 的说明。
+        # 该初始化脚本会把 /opt/flink/checkpoints 与 /warehouse 的所有者
+        # 改成运行 Flink 的 flink 用户（uid 9999），之后 durable checkpoint 可用。
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        state.savepoints.dir: file:///opt/flink/checkpoints/savepoints
+        # ⚠️ 主机名解析：任务里按容器名连 MySQL 与 Kafka
+        env.java.opts.all: -Duser.timezone=Asia/Shanghai
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  taskmanager:
+    <<: *flink-common
+    container_name: rt-taskmanager
+    hostname: taskmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        # 4 个 slot：M1a(CDC->Kafka) 1 个 + M1b(Kafka->Paimon) 1 个，
+        # 余量给 M2 的故障演练（同时跑多个作业）用。
+        # ⚠️ 实测踩坑：原来是 2 个 slot，M1a+M1b 就撞上
+        #    NoResourceAvailableException，而且失败作业会一直占着 slot 不放。
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 2048m
+        # 与 JobManager 保持一致：Paimon sink 不能带 sink materializer
+        table.exec.sink.upsert-materialize: NONE
+        state.backend.type: hashmap
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        env.java.opts.all: -Duser.timezone=Asia/Shanghai
+    depends_on:
+      jobmanager:
+        condition: service_started

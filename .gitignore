@@ -78,8 +78,10 @@ config.local.py
 # 连接器与 Paimon jar（约 74 MB）由 09_realtime/技术决策.md 记录的 URL 重新下载，
 # 仓库只保存"生成方式"（URL + 校验和），不保存 jar 本体。
 09_realtime/jars/
-09_realtime/warehouse/
 09_realtime/kafka-data/
+# warehouse 与 checkpoints 走 Docker 命名卷（见 docker-compose-streaming.yml），
+# 这里留规则只是防止将来有人改回 bind mount 后误提交。
+09_realtime/warehouse/
 09_realtime/checkpoints/
 
 # ============================================================
