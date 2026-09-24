@@ -30,10 +30,12 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: 静态检查（ruff）
-        # ⚠️ 指导书 18.3 的模板里还写了 `09_realtime/`，但第 19 步尚未开工、
-        #    目录不存在 —— ruff 对不存在的路径会直接报错退出，照抄会让 CI 变红。
-        #    第 19 步落地后把 `09_realtime/` 加回这一行即可。
-        run: ruff check src/ tests/ 07_bigdata/ 08_benchmark/ docs/gen_lineage.py
+        # ⚠️ 这个目录列表是**实测**确定的，两个坑：
+        #    ① 指导书 18.3 的模板里写了 `09_realtime/`，但阶段三时该目录尚不存在，
+        #      而 ruff 对不存在的路径会直接报错退出（不是跳过）→ 照抄会让 CI 变红；
+        #    ② 阶段四（实时链路）落地后 09_realtime/ 已存在，因此**现在把它加回来了**
+        #       —— 这正是阶段三注释里说的"第 19 步落地后加回这一行"。
+        run: ruff check src/ tests/ 07_bigdata/ 08_benchmark/ 09_realtime/ docs/gen_lineage.py
 
       - name: 指标单测（不依赖数据库）
         run: pytest tests/ -v -m "not integration"

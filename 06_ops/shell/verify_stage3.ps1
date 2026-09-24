@@ -155,7 +155,9 @@ Check "pytest: metric tests all green (>= 30)" {
 
 Check "ruff: no lint errors" {
     if (-not (Test-Path $RUFF)) { return $false }
-    & $RUFF check src/ tests/ 07_bigdata/ 08_benchmark/ docs/gen_lineage.py *> $null
+    # 09_realtime/ was added after stage 4 (realtime pipeline) landed, to keep this
+    # list identical to the one in .github/workflows/ci.yml.
+    & $RUFF check src/ tests/ 07_bigdata/ 08_benchmark/ 09_realtime/ docs/gen_lineage.py *> $null
     $LASTEXITCODE -eq 0
 }
 

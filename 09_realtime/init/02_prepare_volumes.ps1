@@ -37,8 +37,8 @@ $ErrorActionPreference = 'Stop'
 
 # container -> @{ user = owner to chown to; paths = volume mount points }
 $targets = @(
-    @{ container = 'rt-jobmanager';  user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints') },
-    @{ container = 'rt-taskmanager'; user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints') },
+    @{ container = 'rt-jobmanager';  user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints', '/results') },
+    @{ container = 'rt-taskmanager'; user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints', '/results') },
     @{ container = 'rt-kafka';       user = 'appuser';  uid = 1000; paths = @('/var/lib/kafka/data') }
 )
 

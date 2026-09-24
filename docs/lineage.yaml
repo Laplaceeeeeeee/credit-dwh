@@ -34,8 +34,8 @@ tables:
   dwd_loan_fact:
     layer: DWD
     upstream: ["file:data/clean/loans_full.parquet"]
-    downstream: [ads_risk_segment, dq_check_result, dwd_loan_fact_lc]
-    note: "申请时点事实表（32 个申请字段 + 派生列），不含任何表现期字段（Q8 校验）"
+    downstream: [ads_risk_segment, dq_check_result, dwd_loan_fact_lc, "kafka:credit_dwd_loan_fact"]
+    note: "申请时点事实表（32 个申请字段 + 派生列），不含任何表现期字段（Q8 校验）；同时经 Flink CDC 进入实时链路"
     sla: "T+1 08:00"
 
   dwd_loan_perf_fact:
@@ -158,10 +158,27 @@ tables:
     downstream: ["result:08_benchmark/_results/E5_ladder.csv"]
     note: "E5 数据量阶梯（10%/25%/100%），loan_id % N = 0 两引擎同谓词"
 
-  # ---------- 阶段三：实时链路（第 19 步，**尚未实现**）----------
-  ads_loan_daily_realtime:
-    layer: "ADS(Realtime)"
-    status: planned
-    upstream: ["kafka:loan_issue_events"]
-    downstream: ["reconcile:batch_stream"]
-    note: "⚠️ 第 19 步未开工：本表**不存在**，登记在此是为了标出批流对账的接入点"
+  # ---------- 阶段四：实时链路（✅ 已实现，实现与验收见 09_realtime/）----------
+  # 链路：dwd_loan_fact --(Flink CDC 抓 binlog)--> kafka:credit_dwd_loan_fact
+  #       --> 由 Flink 作业写入下列 Paimon 表（三个 sink 在同一个作业里）
+  rt_loan_fact_latest:
+    layer: "RT(Paimon 主键表)"
+    upstream: ["kafka:credit_dwd_loan_fact"]
+    downstream: []
+    note: "变更日志（debezium-json）镜像最新状态；额外带 sink_ts 用于端到端延迟测量（实测 ≈310 ms）"
+
+  rt_loan_change_1min:
+    layer: "RT(Paimon 窗口聚合)"
+    upstream: ["kafka:credit_dwd_loan_fact"]
+    downstream: []
+    note: "1 分钟滚动窗口（事件时间 + Watermark，允许乱序 5s）。⚠️ 语义是「该窗口内发生过变更的贷款」而非「新增放款笔数」—— 输入是 changelog，UPDATE 会把行从旧窗口移到新窗口"
+
+  rt_loan_month_agg:
+    layer: "RT(Paimon 指标表)"
+    upstream: ["kafka:credit_dwd_loan_fact"]
+    downstream: ["verify:09_realtime/check_batch_stream.py"]
+    note: "⭐ 按放款月维护的 upsert 聚合，是批流对账的实时侧。与 dwd_loan_fact 逐月对账：139 个月、笔数差 0、金额差 0.00（判定规则见 docs/SLA与监控.md §5.3）"
+
+  # 注：原 `ads_loan_daily_realtime`（status: planned）已移除 ——
+  #     实时链路已实现，但**不是日粒度指标表**：本数据集的 issue_date 一律为「当月 1 日」，
+  #     没有真正的日粒度，故实时指标按放款月维护（rt_loan_month_agg）。

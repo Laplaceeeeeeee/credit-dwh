@@ -107,7 +107,29 @@ CREATE TABLE IF NOT EXISTS paimon.rt.rt_loan_change_1min (
   'changelog-producer' = 'input'
 );
 
--- ---------- 两个 sink 放在同一个作业里 ----------
+-- ---------- sink 3：⭐ 实时指标表（M3 批流对账的实时侧）----------
+-- 这不是"镜像表的副本聚合"，而是**流上维护的指标**：
+-- 输入是 changelog（含 UPDATE/DELETE 的 -U/+U/-D），
+-- Flink 在流上按 issue_month 做分组聚合，结果以 upsert 落进 Paimon 主键表。
+-- 于是"离线 dwd_loan_fact 聚合"与"实时流上维护的聚合"是**两条独立路径算同一个指标**，
+-- 二者对得上才叫批流一致 —— 这正是 docs/SLA与监控.md §5.3 那条挂了很久的规则。
+--
+-- ⚠️ 粒度是**放款月**（issue_month，YYYY-MM），不是日：
+--    本数据集的 issue_date 一律是"当月 1 日"，根本没有真正的日粒度。
+--    SLA 文档原文写的是"日粒度"，那是为有日事件的系统写的 —— 此处按数据实情降到月粒度，
+--    并已在 docs/SLA与监控.md 里回写说明（不许含糊成"做过日粒度对账"）。
+CREATE TABLE IF NOT EXISTS paimon.rt.rt_loan_month_agg (
+  issue_month STRING,
+  loan_cnt    BIGINT,
+  funded_sum  DECIMAL(18,2),
+  PRIMARY KEY (issue_month) NOT ENFORCED
+) WITH (
+  'bucket'             = '1',
+  'merge-engine'       = 'deduplicate',
+  'changelog-producer' = 'input'
+);
+
+-- ---------- 三个 sink 放在同一个作业里 ----------
 -- ⭐ 用 EXECUTE STATEMENT SET 而不是两条独立 INSERT：
 --    · 两条独立 INSERT 会被 sql-client 提交成**两个作业**，各占一个 slot，
 --      并且各自重复读一遍 Kafka（多一份源读取与状态）；
@@ -136,5 +158,14 @@ BEGIN
            DESCRIPTOR(op_ts), INTERVAL '1' MINUTE)
   )
   GROUP BY window_start, window_end;
+
+  -- sink 3：实时指标表（放款月粒度），M3 对账的实时侧
+  INSERT INTO paimon.rt.rt_loan_month_agg
+  SELECT
+    issue_month,
+    COUNT(*)         AS loan_cnt,
+    SUM(funded_amnt) AS funded_sum
+  FROM default_catalog.default_database.src_loan_fact_kafka
+  GROUP BY issue_month;
 
 END;

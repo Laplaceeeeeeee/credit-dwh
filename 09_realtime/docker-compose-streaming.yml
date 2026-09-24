@@ -33,6 +33,8 @@ volumes:
   # Kafka 的 log dir 同理：bind mount 上会报 "all log dirs have failed" 而崩溃循环。
   # Kafka 以 uid 1000(appuser) 运行，归属由 init/02_prepare_volumes.ps1 处理。
   kafka-data:
+  # 对账导出目录（Flink filesystem sink 的落点）
+  flink-results:
 
 x-flink-common: &flink-common
   image: ${FLINK_IMAGE}
@@ -59,6 +61,10 @@ x-flink-common: &flink-common
     #    代价：宿主不能直接浏览 warehouse，验证统一走 SQL（99_verify.sql）。
     - paimon-warehouse:/warehouse
     - flink-checkpoints:/opt/flink/checkpoints
+    # 对账导出用：Flink 的 filesystem sink 把实时指标写成 CSV，
+    # 再由 check_batch_stream.py 从容器里 cat 出来比对。
+    # 用命名卷而不是 bind mount —— 理由同 warehouse（Windows 文件共享对 JVM 不可靠）。
+    - flink-results:/results
   networks:
     - credit-dwh-net
   restart: unless-stopped
