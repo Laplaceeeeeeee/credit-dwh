@@ -1,5 +1,5 @@
 # ============================================================
-# Stage 4 init: give the Flink runtime user ownership of its volumes.
+# Stage 4 init: give each runtime its own user ownership of its volumes.
 #
 # ASCII-ONLY ON PURPOSE (appendix B-52).
 #
@@ -23,34 +23,42 @@
 #         touch /warehouse/rt.db/rt_loan_fact_latest/bucket-0/probe.txt
 #       -> Permission denied
 #
-# FIX: chown the volume mount points to the runtime user, and always run
-#      sql-client as that same user (`docker exec -u flink`), so DDL and the
-#      daemons agree on ownership.
+#   The Kafka image has the same pattern with a different user: it runs as
+#   uid 1000 (appuser), so its named volume needs chown to 1000:1000.
+#
+# FIX: chown each volume mount point to the user that actually runs the
+#      service, and always run sql-client as that same user
+#      (`docker exec -u flink`), so DDL and the daemons agree on ownership.
 #
 # Idempotent: safe to run repeatedly.
 # ============================================================
 
 $ErrorActionPreference = 'Stop'
-$FlinkUser = 'flink'
-$Containers = @('rt-jobmanager', 'rt-taskmanager')
-$Paths = @('/warehouse', '/opt/flink/checkpoints')
 
-foreach ($c in $Containers) {
+# container -> @{ user = owner to chown to; paths = volume mount points }
+$targets = @(
+    @{ container = 'rt-jobmanager';  user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints') },
+    @{ container = 'rt-taskmanager'; user = 'flink';    uid = 9999; paths = @('/warehouse', '/opt/flink/checkpoints') },
+    @{ container = 'rt-kafka';       user = 'appuser';  uid = 1000; paths = @('/var/lib/kafka/data') }
+)
+
+foreach ($t in $targets) {
+    $c = $t.container
     $running = docker ps --filter "name=^$c$" --format '{{.Names}}'
     if ($running -ne $c) {
         Write-Host "SKIP: $c is not running"
         continue
     }
-    Write-Host "=== $c ==="
-    foreach ($p in $Paths) {
-        docker exec -u root $c chown -R "${FlinkUser}:${FlinkUser}" $p
-        $owner = docker exec $c stat -c '%U:%G %a' $p
+    Write-Host "=== $c (runtime uid should be $($t.uid)) ==="
+    foreach ($p in $t.paths) {
+        docker exec -u root $c chown -R "$($t.uid):$($t.uid)" $p
+        $owner = docker exec $c stat -c '%u:%g %a' $p
         Write-Host "  $p -> $owner"
     }
-    Write-Host "  runtime uid: $(docker exec $c id -u)"
 }
 
 Write-Host ""
-Write-Host "=== verify the runtime user can now write ==="
-docker exec -u $FlinkUser rt-taskmanager sh -c "touch /warehouse/_ownership_probe && echo '  flink can write /warehouse' && rm -f /warehouse/_ownership_probe"
-docker exec -u $FlinkUser rt-jobmanager sh -c "touch /opt/flink/checkpoints/_ownership_probe && echo '  flink can write /opt/flink/checkpoints' && rm -f /opt/flink/checkpoints/_ownership_probe"
+Write-Host "=== verify each runtime user can write its volume ==="
+docker exec -u flink rt-taskmanager sh -c "touch /warehouse/_ownership_probe && echo '  flink can write /warehouse' && rm -f /warehouse/_ownership_probe"
+docker exec -u flink rt-jobmanager sh -c "touch /opt/flink/checkpoints/_ownership_probe && echo '  flink can write /opt/flink/checkpoints' && rm -f /opt/flink/checkpoints/_ownership_probe"
+docker exec -u appuser rt-kafka sh -c "touch /var/lib/kafka/data/_ownership_probe && echo '  appuser can write kafka-data' && rm -f /var/lib/kafka/data/_ownership_probe"

@@ -30,6 +30,9 @@ volumes:
   # 命名卷：见 x-flink-common 里的说明（Windows bind mount 会让 Hadoop mkdir 失败）
   paimon-warehouse:
   flink-checkpoints:
+  # Kafka 的 log dir 同理：bind mount 上会报 "all log dirs have failed" 而崩溃循环。
+  # Kafka 以 uid 1000(appuser) 运行，归属由 init/02_prepare_volumes.ps1 处理。
+  kafka-data:
 
 x-flink-common: &flink-common
   image: ${FLINK_IMAGE}
@@ -85,7 +88,19 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
-      - ./kafka-data:/var/lib/kafka/data
+      # ⚠️ 用命名卷，不用 Windows bind mount。
+      #    实测教训（2026-09-24）：绑到宿主目录 ./kafka-data 时，运行一段时间后
+      #    Kafka 报
+      #      WARN  Broker 1 stopped fetcher for partitions because they are in the
+      #            failed log directory /var/lib/kafka/data
+      #      ERROR Shutdown broker because all log dirs in /var/lib/kafka/data
+      #            have failed
+      #    于是进入"启动 → 日志目录失败 → 关闭"的崩溃循环，表现为间歇性不可达。
+      #    这与 Paimon warehouse 在 bind mount 上的失败属于**同一类问题**：
+      #    Docker Desktop 的 Windows 文件共享对 JVM 有状态服务不可靠。
+      #    （注意：Kafka 镜像以 uid 1000(appuser) 运行，命名卷需要 chown，
+      #      见 init/02_prepare_volumes.ps1。）
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -115,9 +130,14 @@ services:
         #      表现为后续作业报 NoResourceAvailableException ——
         #      真正的错因（第一个作业）反而被埋掉了。
         #    这是实测踩到的坑：排查时花了很久才发现"是前面那个坏作业占着资源"。
-        #    限 3 次既能暴露持续失败，也足够 M2 做 kill-and-recover 演练。
+        #
+        # M1 用 attempts=3（约 15 秒）：让配置类错误**快速暴露**。
+        # M2 起改为 attempts=12（5s × 12 ≈ 60 秒容忍窗口）：因为故障演练要
+        #   覆盖"TaskManager 容器重启"这种需要几十秒的真实中断 ——
+        #   3 次的窗口撑不过容器重启，作业会先于 TM 就永久 FAILED。
+        #   这个数值是权衡出来的（容忍中断 vs 快速暴露错误），不是拍的。
         restart-strategy.type: fixed-delay
-        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.attempts: 12
         restart-strategy.fixed-delay.delay: 5s
         # ⚠️ Paimon 必需：往 Paimon 写 upsert 变更时，Flink 默认会插一个
         #    "sink materializer"（为不支持更新的 sink 做去重），

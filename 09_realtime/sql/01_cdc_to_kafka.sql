@@ -31,6 +31,28 @@ SET 'execution.checkpointing.interval' = '10s';
 SET 'pipeline.name' = 'M1a-cdc-mysql-to-kafka';
 
 -- ---------- 源：MySQL CDC ----------
+-- ⭐ 源码里这一行是 M2 故障演练找出来的 bug 修复，**不要改回 latest-offset**：
+--   latest-offset 的语义是"**从启动那一刻的 binlog 末尾开始读**"。
+--   于是每次重启都会在"当前时刻"取一个新位点，把停机期间的变更**整段跳过** ——
+--   是静默的数据丢失，而且不报任何错。
+--
+--   实测证据（Debezium 日志，2026-09-24）：
+--     故障注入 pause TaskManager 50.6 秒，期间插入 3 笔（提交于 13:34:06.729）；
+--     恢复后 Debezium 打印
+--       Snapshot step 7 - Skipping snapshotting of data
+--       Snapshot ended ... currentBinlogPosition=6294
+--       Connected to MySQL binlog ... starting at ... restartBinlogPosition=6294
+--     即它从 13:34:07.8 取的位点 6294 开始读，而 13:34:06.7 的插入在该位点之前
+--     → 3 笔全部丢失（Kafka 偏移仍为 0）。
+--
+--   改用 initial 的语义是"**有存储位点就续读，没有才快照**"：
+--     · 正常情况下从 checkpoint 恢复的位点续读 → 不丢、且不重复快照；
+--     · 万一位点丢失，则退回全量快照 → 数据重复但由 Paimon 主键表去重，
+--       **最坏是慢，不会丢**。
+--   这才是需要容错的 CDC 链路该用的启动模式。
+--
+-- ⚠️ 首次启动（或位点丢失时）会做 226 万行的全量快照，属重操作。
+-- 用 scan.startup.mode = latest-offset 只适合"完全不需要补历史"的一次性试验。
 CREATE TABLE src_loan_fact (
   loan_id       STRING,
   funded_amnt   DECIMAL(14,2),
@@ -57,7 +79,7 @@ CREATE TABLE src_loan_fact (
   'password'             = 'cdc_pwd_2026',
   'database-name'        = 'credit_dwh',
   'table-name'           = 'dwd_loan_fact',
-  'scan.startup.mode'    = 'latest-offset',
+  'scan.startup.mode'    = 'initial',
   'scan.incremental.snapshot.enabled' = 'false',
   'server-time-zone'     = 'Asia/Shanghai'
 );
