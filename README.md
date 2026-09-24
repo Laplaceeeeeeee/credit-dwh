@@ -4,9 +4,8 @@
 
 > **项目定位**：金融/信贷离线数仓，作为**研究生实习简历**的项目经历
 > **投递方向**：银行/券商 数据开发（数仓方向）
-> **当前进度**：阶段二 ✅ 已完成 · 阶段三 **8/9 步**（第 12–18、20 步全部完成；
-> 第 19 步实时链路是**可砍项、未做**）· CI ✅ **passing**
-> **最后更新**：2026-09-24（仓库卫生：学习手册与求职材料移出仓库，只留可复现的工程交付物）
+> **当前进度**：阶段二 ✅ · 阶段三 ✅（8/9 步）· **阶段四 ✅ 实时链路 + 跨链路对账（M1–M4 全部完成）** · CI ✅ **passing**
+> **最后更新**：2026-09-24（阶段四收口：README 补上实时链路实测章节，撤掉"实时未实施"的旧声明）
 
 ---
 
@@ -20,6 +19,7 @@
 | `docs/第18步-工程化收口验收记录.md` | 口径单测 / CI / 血缘 / SLA 的验收记录，含 6 处"照抄模板就会踩坑"的实测修正 |
 | `docs/第20步-面试资产验收记录.md` | 项目文档与机器验收表的验收记录 |
 | `08_benchmark/*.md` | E1–E5 五个对照实验报告 + 引擎选型结论 + 双引擎口径差异记录 |
+| **`09_realtime/`** | ⭐ **阶段四实时链路**：`技术决策.md` + **M1–M4 四份验收记录** + 对账脚本 + CDC/湖仓 SQL；排错手册 **B-1~B-23** |
 | `06_ops/runbook.md` | 运维手册（含 PowerShell 编码坑的一手教训） |
 | `06_ops/docs_claims_guard.txt` | **文档过期说法守卫**：防止 README 与实测数字脱节，由验收脚本读取 |
 
@@ -143,15 +143,86 @@ data/clean/loans_full.parquet (338MB, 2,260,668 行 × 137 列)
   [Actions run `35698960325`](https://github.com/Laplaceeeeeeee/credit-dwh/actions/runs/35698960325)，
   首页 badge 显示 `passing`。
 - **数据血缘**：`docs/lineage.yaml` → `docs/gen_lineage.py` → `docs/数据血缘.md`
-  （23 个节点、Mermaid）；CI 跑 `--check` 卡住"悬空引用 / 单向边"。
+  （**25 个节点**、Mermaid，含阶段四的实时层；CI 跑 `--check` 卡住"悬空引用 / 单向边"）。
 - **四类 SLA**：新鲜度 / 数据量波动 / 指标越界 / ⭐ **跨链路对账**（双引擎 + 批流），见 `docs/SLA与监控.md`。
 
-### 实时链路（**未实施** —— 诚实声明）
+## 🌊 阶段四：实时链路（CDC → Kafka → Flink → Paimon）与跨链路对账
 
-第 19 步（CDC → Kafka → 实时指标 + 批流对账）是**可砍项，本项目没有做**。
-`docs/SLA与监控.md` 里只**定义了批流对账的判据**，血缘图里 `ads_loan_daily_realtime`
-以 `status: planned` 标注（画成虚线）。
-所以本项目的正确说法是"**离线**双引擎一致性已验证"，**不是"做过实时"**。
+> **一句话**：把同一份 `dwd_loan_fact` 用 CDC 接进流式链路，在 Paimon 上维护三张实时表，
+> 并**把阶段三只写了判据、始终没实现的"跨链路对账"真正跑通**。
+
+### 链路与版本矩阵
+
+```
+MySQL dwd_loan_fact --(Flink CDC 抓 binlog)--> Kafka（debezium-json 变更日志）
+    --> 一个 Flink 作业（EXECUTE STATEMENT SET，三个 sink 共享同一个源）
+          ├─ rt_loan_fact_latest   主键表：镜像最新状态（含 sink_ts 供延迟测量）
+          ├─ rt_loan_change_1min   1 分钟滚动窗口（事件时间 + Watermark）
+          └─ rt_loan_month_agg     按放款月维护的 upsert 指标表  ← 对账的实时侧
+```
+
+版本矩阵（2026-09-24 查制品锁定，全部实拉/实跑）：
+Flink **1.20.5** · Paimon **1.4.2** · Flink CDC **3.6.0-1.20** · Kafka **4.3.1** · Paimon-Spark **3.5_2.12:1.4.2**
+⚠️ 刻意**不用**最新的 `flink:2.3.0` —— Paimon 只发布到 `paimon-flink-2.2`，照抄"最新 tag"必然撞墙。
+
+### 实测结果
+
+| 里程碑 | 关键数字 |
+|---|---|
+| **M1 链路通** | 端到端延迟 **≈310 ms**（MySQL `NOW(3)` → Paimon `sink_ts`）；226 万行全量快照 **34 秒** |
+| **M2 正确性** | 故障演练：`pause` TaskManager → JM 在 **50.4 秒**判定失效（= `heartbeat.timeout`）→ 恢复后 **5.1 秒** RUNNING、**10 秒**内补发停机期间的变更；`restored=1` |
+| **M3 批流对账** | **139 个放款月，笔数差 0、金额差 0.00**；总笔数 2,260,668、总额 34,004,208,600.00 两侧完全一致 |
+| **M4 湖仓查询** | Spark 直读**同一份** Paimon 存储；`VERSION AS OF` 回读历史快照，与最新快照并存 |
+
+### ⭐ M2 抓出的真实缺陷（本阶段最有价值的产出）
+
+故障演练发现：**`scan.startup.mode = latest-offset` 会在重启时静默丢数据**。
+它的语义是"从启动那一刻的 binlog 末尾开始读"，于是重启时取新位点，
+把停机期间的变更**整段跳过，且不报任何错**（Debezium 日志实测打印了 `restartBinlogPosition`）。
+更危险的是**不确定**：同一份配置两次演练，一次丢、一次没丢。
+
+修复：改用 `initial`（有存储位点就续读，没有才快照；万一位点丢失则退回全量快照，
+重复由 Paimon 主键去重 —— **最坏是慢，不会丢**）。
+验证方式是**只改这一个参数的对照实验**：修复后同一演练 Kafka 偏移
+2,260,668 → 2,260,671，停机期间插入的 3 笔全部补上。
+
+### 事件时间语义（实测边界，不是"配了个 Watermark"）
+
+| 用例 | 记录级（主键表） | 窗口级 |
+|---|---|---|
+| `op_ts` 落在**已关闭**窗口（迟到 3 分钟） | **收到了** | **未计入** —— 窗口定稿后不被迟到数据改写 |
+| 按墙上时钟"晚 90 秒"、但 Watermark 尚未越过 | 收到了 | **正常计入** |
+
+> **记录不会丢，但窗口会丢迟到数据；而"迟到"是相对 Watermark 判定，不是相对墙上时钟。**
+
+### 跨链路对账（`docs/SLA与监控.md` §5.3，从"只有判据"变成"有结果"）
+
+```powershell
+& .\.venv\Scripts\python.exe 09_realtime\check_batch_stream.py   # 退出码 0 = 通过
+```
+
+- 离线侧：MySQL `dwd_loan_fact`（阶段二/三那套 T+1 批处理的结果）
+- 实时侧：Paimon `rt_loan_month_agg` —— **流上**维护的聚合，不是"镜像表的副本聚合"
+- 容差：计数要求**严格相等**；金额容差 **0.00**（两侧都是精确十进制求和，差异本身就该是问题信号）
+- ⚠️ 粒度是**放款月**不是日：本数据集的 `issue_date` 一律为"当月 1 日"，没有真正的日粒度
+
+### 湖仓查询（M4：第二个引擎直读同一份存储）
+
+Spark 通过 Paimon catalog 直读（`warehouse` 以 **`:ro` 只读**挂载 —— 读者不写湖）。
+Flink 全程持续流写，同一次 Spark 查询里读两种视图：
+
+| 视图 | `issue_month='2007-06'` | 总笔数 |
+|---|---|---|
+| 最新快照 | **25 / 93,084.56** | **2,260,669** |
+| `VERSION AS OF 5` | **24 / 91,850.00** | **2,260,668** |
+
+⭐ **可见性延迟 ≈ 9.8 秒**：Paimon 的快照提交**绑定在 Flink checkpoint 上**（配置 10 秒间隔）。
+注意它和 M1 的 310 ms 是两件事 —— **310 ms 是"入队"，9.8 秒是"可被查询引擎看到"**。
+要压可见性延迟就得调小 checkpoint 间隔，代价是更频繁的提交与更多小文件。
+
+> 实现与验收细节见 `09_realtime/` 下的 `技术决策.md` 与 M1–M4 四份验收记录
+> （含 **B-1 ~ B-23 共 23 条排错手册**：`docker manifest inspect` 不走 registry-mirrors、
+> 权限主体不一致导致的"伪 Hadoop bug"、Windows bind mount 对 JVM 有状态服务不可靠等）。
 
 ---
 
@@ -175,8 +246,14 @@ credit-dwh/
 ├── 03_metrics/                指标口径字典 / 数据边界说明
 ├── 04_analysis/               图表与分析报告
 ├── 06_ops/                    一键流水线 / 运维手册 / verify_stage3.ps1 / docs_claims_guard.txt
-├── 07_bigdata/                🆕 阶段三：docker-compose、Hive SQL、PySpark、交换脚本
-├── 08_benchmark/              🆕 阶段三：测量框架（harness/事件日志/数文件）+ E1–E5 报告
+├── 07_bigdata/                阶段三：docker-compose、Hive SQL、PySpark、交换脚本
+├── 08_benchmark/              阶段三：测量框架（harness/事件日志/数文件）+ E1–E5 报告
+├── 09_realtime/               🆕 阶段四：实时链路（CDC/Kafka/Flink/Paimon）+ 跨链路对账
+│   ├── docker-compose-streaming.yml   Kafka(KRaft) + Flink JM/TM [+ Spark 按需 profile]
+│   ├── sql/01-04              CDC→Kafka、Kafka→Paimon(3 sink)、对账导出、Spark 直读
+│   ├── check_batch_stream.py  ⭐ 批流对账脚本（退出码 0/1）
+│   ├── init/                  共享网络 / 最小权限 CDC 账号 / 卷归属
+│   └── M1..M4-*验收记录.md     四份验收记录（含 B-1~B-23 排错手册）
 ├── tests/                     ⭐ 指标口径回归单测（34 条）
 ├── sql/ddl/                   13 张表
 ├── sql/dq/                    质量校验 SQL（含防泄漏）
@@ -217,17 +294,57 @@ docker exec -i bd-spark /opt/spark/bin/spark-sql -f /workspace/07_bigdata/hive/0
 & .\.venv\Scripts\python.exe 07_bigdata\compare_ads.py
 
 # 4. 工程化三连（与 CI 完全一致，不依赖数据库/集群）
-& .\.venv\Scripts\ruff.exe check src/ tests/ 07_bigdata/ 08_benchmark/ docs/gen_lineage.py
+& .\.venv\Scripts\ruff.exe check src/ tests/ 07_bigdata/ 08_benchmark/ 09_realtime/ docs/gen_lineage.py
 & .\.venv\Scripts\python.exe -m pytest tests\ -v -m "not integration"   # 期望 34 passed
-& .\.venv\Scripts\python.exe docs\gen_lineage.py --check
+& .\.venv\Scripts\python.exe docs\gen_lineage.py --check                # 期望 25 个节点
 
 # 5. 阶段三机器验收（一条命令出结论；-Full 会额外查 Docker 与跑 Spark 一致性）
 .\06_ops\shell\verify_stage3.ps1          # 快速模式
 .\06_ops\shell\verify_stage3.ps1 -Full    # 完整模式
 ```
 
-> ⚠️ **Docker VM 只有 7.64 GB 内存**：跑 Spark 重任务前先 `docker stop credit-dwh-mysql` 腾内存
-> （Spark 侧已缩容到 worker 2 GB / 4 核）。
+### 阶段四（实时链路 / 湖仓对账）
+
+```powershell
+# 1. 初始化（幂等）：共享网络 + 最小权限 CDC 账号 + 卷归属
+cd 09_realtime
+powershell -NoProfile -ExecutionPolicy Bypass -File .\init_network.ps1
+Get-Content .\init\01_create_cdc_user.sql -Raw |
+  docker exec -i credit-dwh-mysql mysql -uroot -proot123456
+
+# 2. 起实时栈（Kafka KRaft + Flink JM/TM）
+docker compose -f docker-compose-streaming.yml up -d
+powershell -NoProfile -ExecutionPolicy Bypass -File .\init\02_prepare_volumes.ps1
+
+# 3. 建主题（M1a 还没产出时，主题不会被自动创建）
+docker exec rt-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 `
+  --create --if-not-exists --topic credit_dwd_loan_fact --partitions 1 --replication-factor 1
+
+# 4. 提交两个作业
+#    ⚠️ 必须 -u flink：docker exec 默认 root，而 Flink 守护进程是 uid 9999，
+#       DDL 以 root 建出的 warehouse 目录会让 TaskManager 写不进去（B-12）
+docker exec -u flink rt-jobmanager /opt/flink/bin/sql-client.sh -f /sql/01_cdc_to_kafka.sql
+docker exec -u flink rt-jobmanager /opt/flink/bin/sql-client.sh -f /sql/02_kafka_to_paimon.sql
+
+# 5. ⭐ 跨链路对账（退出码 0 = 通过）
+cd ..
+& .\.venv\Scripts\python.exe 09_realtime\check_batch_stream.py
+
+# 6. 湖仓查询：按需启动第二个引擎，用完停掉省内存
+cd 09_realtime
+docker compose -f docker-compose-streaming.yml --profile query up -d spark-query
+docker exec rt-spark-query /opt/spark/bin/spark-sql `
+  --jars /opt/paimon/paimon-spark-3.5_2.12-1.4.2.jar `
+  --conf spark.sql.catalog.paimon=org.apache.paimon.spark.SparkCatalog `
+  --conf spark.sql.catalog.paimon.warehouse=file:///warehouse `
+  --conf spark.sql.extensions=org.apache.paimon.spark.extensions.PaimonSparkSessionExtensions `
+  --conf spark.ui.enabled=false -f /sql/04_spark_read_paimon.sql
+docker compose -f docker-compose-streaming.yml --profile query stop spark-query
+```
+
+> ⚠️ **两条内存规则方向相反，不要照抄**：
+> 阶段三是"跑 Spark 重任务前停 MySQL"；
+> **阶段四是 CDC 需要 MySQL 活着，该停的是 Hive/Spark 那四个容器**。
 
 ---
 
