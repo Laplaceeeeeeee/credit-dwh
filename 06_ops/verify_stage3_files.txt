@@ -92,3 +92,6 @@ README.md
 06_ops/shell/verify_stage3.ps1
 06_ops/docs_claims_guard.txt
 docs/第20步-面试资产验收记录.md
+
+# ---- 项目级文档（不属于某一阶段，但必须存在的入口文档）----
+docs/项目总览.md
